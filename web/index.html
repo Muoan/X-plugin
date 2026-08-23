@@ -30,9 +30,9 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="tasks">任务</button>
-    <button class="tab" data-tab="files">文件</button>
-    <button class="tab" data-tab="settings">设置</button>
+    <button class="tab active" data-tab="tasks">📥 任务</button>
+    <button class="tab" data-tab="files">📁 文件</button>
+    <button class="tab" data-tab="settings">⚙️ 设置</button>
   </nav>
 
   <main>
@@ -60,48 +60,56 @@
     <section id="tab-settings" class="panel hidden">
       <div class="settings-form">
         <div class="set-card">
-          <div class="set-card-head">🖥 面板</div>
-          <div class="set-row">
-            <div class="set-label"><span>面板标题</span><small>浏览器标签页显示的名称</small></div>
-            <input id="setTitle" type="text">
+          <h3>🖥 面板设置</h3>
+          <div class="form-row">
+            <label>面板标题<span class="hint-inline">浏览器标签页显示的名称</span></label>
+            <input id="setTitle" class="form-input" type="text">
           </div>
-          <div class="set-row">
-            <div class="set-label"><span>面板端口</span><small>修改后需重启云崽生效</small></div>
-            <input id="setPort" type="number" min="1000" max="65535">
+          <div class="form-row">
+            <label>面板端口<span class="hint-inline">修改后需重启云崽生效</span></label>
+            <input id="setPort" class="form-input" type="number" min="1000" max="65535">
           </div>
-          <div class="set-row">
-            <div class="set-label"><span>自动清理（分钟）</span><small>直链过期后自动删除文件</small></div>
-            <input id="setCleanup" type="number" min="1" max="1440">
+          <div class="form-row">
+            <label>自动清理<span class="hint-inline">直链过期后自动删除文件（分钟）</span></label>
+            <input id="setCleanup" class="form-input" type="number" min="1" max="1440">
           </div>
-          <div class="set-row">
-            <div class="set-label"><span>单文件大小上限（MB）</span><small>超过上限将拒绝下载</small></div>
-            <input id="setMaxFile" type="number" min="1" max="2048">
+          <div class="form-row">
+            <label>单文件上限<span class="hint-inline">超过上限将拒绝下载（MB）</span></label>
+            <input id="setMaxFile" class="form-input" type="number" min="1" max="2048">
           </div>
         </div>
 
         <div class="set-card">
-          <div class="set-card-head">🌐 代理</div>
+          <h3>🌐 代理设置</h3>
           <div id="proxyStatus" class="proxy-status"></div>
-          <div class="set-row">
-            <div class="set-label"><span>订阅链接</span><small>V2Board 订阅地址，保存后刷新节点</small></div>
-            <input id="setSubscribe" type="text" placeholder="V2Board 订阅地址">
+          <div class="form-row">
+            <label>订阅链接<span class="hint-inline">V2Board 订阅地址，保存后刷新节点</span></label>
+            <input id="setSubscribe" class="form-input" type="text" placeholder="V2Board 订阅地址">
           </div>
-          <div class="set-row">
-            <div class="set-label"><span>代理端口</span><small>socks5 监听端口，需重启代理生效</small></div>
-            <input id="setProxyPort" type="number" min="1024" max="65535">
+          <div class="form-row">
+            <label></label>
+            <div class="set-actions">
+              <button id="saveSubscribeBtn" class="btn sm">保存订阅</button>
+              <button id="refreshNodesBtn" class="btn sm">刷新节点</button>
+            </div>
           </div>
-          <div class="set-row">
-            <div class="set-label"><span>当前节点</span><small>选择后点击「切换节点并启动」生效</small></div>
-            <select id="setNode"></select>
+          <div class="form-row">
+            <label>代理端口<span class="hint-inline">socks5 监听端口，需重启代理生效</span></label>
+            <input id="setProxyPort" class="form-input" type="number" min="1024" max="65535">
           </div>
-          <div class="set-actions">
-            <button id="saveSubscribeBtn" class="btn sm">保存订阅</button>
-            <button id="refreshNodesBtn" class="btn sm">刷新节点</button>
-            <button id="proxyStartBtn" class="btn sm">启动代理</button>
-            <button id="proxyStopBtn" class="btn sm">停止代理</button>
-            <button id="proxyTestBtn" class="btn sm">连通测试</button>
-            <button id="proxySwitchBtn" class="btn sm primary">切换节点并启动</button>
-            <button id="speedtestBtn" class="btn sm primary">⏱ 全节点测速</button>
+          <div class="form-row">
+            <label>当前节点<span class="hint-inline">选择后点「切换节点并启动」生效</span></label>
+            <select id="setNode" class="form-input"></select>
+          </div>
+          <div class="form-row">
+            <label></label>
+            <div class="set-actions">
+              <button id="proxyStartBtn" class="btn sm">启动代理</button>
+              <button id="proxyStopBtn" class="btn sm">停止代理</button>
+              <button id="proxyTestBtn" class="btn sm">连通测试</button>
+              <button id="proxySwitchBtn" class="btn sm primary">切换节点并启动</button>
+              <button id="speedtestBtn" class="btn sm primary">⏱ 全节点测速</button>
+            </div>
           </div>
           <div class="speedtest-wrap">
             <p id="speedtestMsg" class="sp-testing hidden"></p>
@@ -111,13 +119,14 @@
         </div>
 
         <div class="set-card">
-          <div class="set-card-head">🔑 安全</div>
-          <div class="set-row">
-            <div class="set-label"><span>访问令牌</span><small>面板登录凭证，重置后旧令牌立即失效</small></div>
-            <div class="set-token">
-              <div class="token-box" id="tokenBox"></div>
-              <button id="resetTokenBtn" class="btn ghost sm">重置</button>
-            </div>
+          <h3>🔑 安全设置</h3>
+          <div class="form-row">
+            <label>访问令牌<span class="hint-inline">面板登录凭证，重置后旧令牌立即失效</span></label>
+            <div class="token-box" id="tokenBox"></div>
+          </div>
+          <div class="form-row">
+            <label></label>
+            <button id="resetTokenBtn" class="btn ghost sm">重置令牌</button>
           </div>
         </div>
 
