@@ -67,7 +67,7 @@ export class XResource extends plugin {
 
   async autoParse (e) {
     // 命令消息交给对应命令，不自动下载
-    if (/^#?X(?:解析|下载|拉取|自动下载)/i.test(e.msg)) return false
+    if (/^#?X(?:解析|下载|自动下载)/i.test(e.msg)) return false
     // 自动下载
     const cfg = getConfig()
     if (cfg.x.autoDownload === false) {

@@ -26,11 +26,6 @@ const DEFAULTS = {
     // 自动下载直链
     autoDownload: true
   },
-  pull: {
-    // 资源上限
-    maxLinks: 15,
-    timeout: 15000
-  },
   panel: {
     // 面板端口
     port: 3007,

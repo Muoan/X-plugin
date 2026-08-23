@@ -18,13 +18,6 @@ export const helpList = [
     ]
   },
   {
-    group: '🌐 网页拉取',
-    list: [
-      { emoji: '📥', title: '#X拉取 <网址>', desc: '拉取网页标题/描述/资源链接' },
-      { emoji: '📄', title: '#拉取网页 <网址>', desc: '同上，快捷别名' }
-    ]
-  },
-  {
     group: '🚀 代理（订阅）',
     list: [
       { emoji: '▶️', title: '#X代理开', desc: '启动本地代理（socks5:10890）' },

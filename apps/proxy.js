@@ -6,7 +6,7 @@ export class XProxy extends plugin {
   constructor () {
     super({
       name: 'X:代理',
-      dsc: '订阅链接代理（v2ray 本地 socks5），供 X 解析/网页拉取走代理',
+      dsc: '订阅链接代理（v2ray 本地 socks5），供 X 解析下载走代理',
       event: 'message',
       priority: 2000,
       rule: [
