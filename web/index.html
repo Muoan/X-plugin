@@ -103,8 +103,17 @@
             <button id="resetTokenBtn" class="btn ghost sm">重置令牌</button>
           </div>
           <div class="form-row">
-            <label>X Cookie<span class="hint-inline">auth_token=xxx; ct0=yyy，用于抓取评论，建议小号</span></label>
-            <textarea id="setCookie" class="form-input" rows="2" placeholder="auth_token=xxx; ct0=yyy"></textarea>
+            <label>X Cookie<span class="hint-inline">用于抓取评论，建议小号</span></label>
+            <textarea id="setCookie" class="form-input" rows="3" placeholder="整条 Cookie 串粘贴到这里，例如：auth_token=xxx; ct0=yyy; ..."></textarea>
+            <details class="cookie-help">
+              <summary>📖 获取教程 &amp; 时效说明</summary>
+              <ol>
+                <li><b>电脑：</b>登录 x.com → F12 → Application → Cookies → 找到 <code>auth_token</code> 和 <code>ct0</code>，复制成 <code>auth_token=值; ct0=值</code></li>
+                <li><b>手机（via 浏览器）：</b>菜单 → 工具箱 → 查看 Cookie（或站点信息 → Cookie）→ 复制整条 Cookie 串</li>
+                <li><b>时效：</b>约 1 年有效；重新登录/改密/被风控会提前失效，失效后重新获取</li>
+                <li><b>风险：</b>抓评论为非常规访问，有封号风险，请使用小号，封号概不负责</li>
+              </ol>
+            </details>
           </div>
           <div class="form-row">
             <label></label>

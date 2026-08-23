@@ -42,6 +42,7 @@ export const helpList = [
     group: '💬 评论（Cookie）',
     list: [
       { emoji: '🍪', title: '#X设置Cookie', desc: '填 X Cookie 抓评论（仅主人）' },
+      { emoji: '🧪', title: '#X检查Cookie', desc: '验证 Cookie 是否有效（仅主人）' },
       { emoji: '🧹', title: '#X删除Cookie', desc: '删除 Cookie 停止抓评论（仅主人）' },
       { emoji: '⚠️', title: '封号风险', desc: '抓评论非官方行为，请用小号 Cookie' }
     ]

@@ -6,6 +6,7 @@ const X_REG = /(?:https?:\/\/)?(?:www\.|mobile\.|m\.)?(?:x|twitter)\.com\/(?:#!\
 
 /** TweetDetail 接口候选 */
 const QUERY_IDS = [
+  'XMOz5h24KAZ86qKffKTLdQ',
   '_iJccJ-mHcyaV0nq_odmBA',
   'FpV6tM0P8R0zH8oVl8hHmA',
   'V94PmY5J0qQd9Y2F1mQ9eQ',
@@ -18,27 +19,59 @@ function parseCookie (cookie) {
   if (!c) return null
   if (/;/.test(c)) {
     const pick = (k) => { const m = c.match(new RegExp(k + '=([^;\\s]+)')); return m ? m[1] : '' }
-    return { auth: pick('auth_token'), ct0: pick('ct0') }
+    return { auth: pick('auth_token'), ct0: pick('ct0'), raw: c }
   }
   const m = c.match(/auth_token=([^;\s]+)/)
-  return m ? { auth: m[1], ct0: '' } : { auth: c, ct0: '' }
+  return m ? { auth: m[1], ct0: '', raw: c } : { auth: c, ct0: '', raw: '' }
+}
+
+/** 检查 Cookie 有效性 */
+export async function checkCookie (cookie) {
+  const ck = parseCookie(cookie)
+  if (!ck || !ck.auth) return { ok: false, msg: '未配置 Cookie' }
+  const raw = ck.raw || `auth_token=${ck.auth}; ct0=${ck.ct0 || ''}`
+  const headers = {
+    authorization: 'Bearer AAAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+    cookie: raw,
+    'x-csrf-token': ck.ct0 || '',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    accept: '*/*',
+    'x-twitter-active-user': 'yes',
+    'x-twitter-client-language': 'zh-cn',
+    'x-twitter-auth-type': 'OAuth2Session',
+    referer: 'https://x.com/home',
+    origin: 'https://x.com'
+  }
+  try {
+    const res = await fetchText('https://x.com/i/api/1.1/account/settings.json', { proxy: true, timeout: 15000, headers })
+    if (res.status === 200) {
+      const j = JSON.parse(res.body)
+      return { ok: true, msg: `✅ 有效（账号 ${j.screen_name || j.username || ''}）` }
+    }
+    const code = (() => { try { return JSON.parse(res.body).errors?.[0]?.code } catch { return null } })()
+    return { ok: false, msg: `❌ 无效（HTTP ${res.status}${code ? ' code ' + code : ''}）——请重新复制 Cookie` }
+  } catch (err) {
+    return { ok: false, msg: `❌ 检查失败：${err.message}` }
+  }
 }
 
 /** 抓推文评论（官方 GraphQL） */
 export async function getComments (tweetId, cookie) {
   const ck = parseCookie(cookie)
   if (!ck || !ck.auth) return null
+  const raw = ck.raw || `auth_token=${ck.auth}; ct0=${ck.ct0 || ''}`
   const cfg = getConfig()
   const qid = (cfg.x && cfg.x.tweetDetailQueryId) || ''
   const ids = qid ? [qid] : QUERY_IDS
   const headers = {
     authorization: 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
-    cookie: `auth_token=${ck.auth}; ct0=${ck.ct0 || ''}`,
+    cookie: raw,
     'x-csrf-token': ck.ct0 || '',
     'content-type': 'application/json',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     'x-twitter-active-user': 'yes',
     'x-twitter-client-language': 'zh-cn',
+    'x-twitter-auth-type': 'OAuth2Session',
     referer: `https://x.com/i/status/${tweetId}`,
     origin: 'https://x.com'
   }

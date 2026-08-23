@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import path from 'node:path'
-import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments } from '../components/x.js'
+import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments, checkCookie } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
 import * as downloader from '../components/downloader.js'
 import * as proxy from '../components/proxy.js'
@@ -63,7 +63,8 @@ export class XResource extends plugin {
         { reg: /^#?X下载\s*\S+/i, fnc: 'cmdDownload' },
         { reg: /^#?X自动下载\s*(开|关)/i, fnc: 'toggleAuto' },
         { reg: /^#?X设置Cookie\s*\S+/i, fnc: 'cmdSetCookie' },
-        { reg: /^#?X删除Cookie/i, fnc: 'cmdDelCookie' }
+        { reg: /^#?X删除Cookie/i, fnc: 'cmdDelCookie' },
+        { reg: /^#?X检查Cookie/i, fnc: 'cmdCheckCookie' }
       ]
     })
   }
@@ -114,6 +115,23 @@ ${await buildDownloadMsg(results, info.url)}
     if (!e.isMaster) return e.reply('❌ 仅主人可用')
     setConfig({ x: { cookie: '' } })
     return e.reply('✅ 已删除 X Cookie，解析将不再抓取评论')
+  }
+
+  async cmdCheckCookie (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
+    const ck = getConfig().x?.cookie || ''
+    if (!ck) return e.reply('未配置 Cookie，请先 #X设置Cookie')
+    // 起代理再检查
+    let autoStarted = false
+    try {
+      autoStarted = await downloader.ensureProxy(true, 'parse')
+    } catch { /* 代理失败也继续尝试 */ }
+    try {
+      const r = await checkCookie(ck)
+      return e.reply(r.msg)
+    } finally {
+      if (autoStarted) { try { await downloader.stopProxy('parse') } catch { /* ignore */ } }
+    }
   }
 
   async cmdParse (e) {

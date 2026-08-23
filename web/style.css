@@ -92,6 +92,10 @@ main { padding: 18px 22px 40px; max-width: 1100px; margin: 0 auto; }
 .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(43,109,232,.14); }
 .token-box { background: var(--card2); border: 1px dashed #93c5fd; border-radius: 8px; padding: 10px; font-family: monospace; word-break: break-all; color: var(--accent); font-size: 13px; flex: 1; min-width: 180px; }
 .set-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cookie-help { margin-top: 8px; font-size: 12px; color: var(--dim); }
+.cookie-help summary { cursor: pointer; user-select: none; color: var(--accent); }
+.cookie-help ol { margin: 8px 0 0; padding-left: 18px; line-height: 1.7; }
+.cookie-help code { background: var(--chip); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
 .save-config { align-self: flex-start; margin-top: 4px; }
 @media (max-width: 520px) {
   .form-row label { width: 100%; }
