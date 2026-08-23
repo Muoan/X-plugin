@@ -24,7 +24,7 @@ export class XHelp extends plugin {
           helpCfg,
           helpGroup: helpList,
           colCount,
-          copyright: 'Created By Trss-Yunzai &amp; X-plugin',
+          copyright: 'Created By Miao-Yunzai &amp; Trss-Yunzai &amp; X-plugin',
           pageGotoParams: { waitUntil: 'networkidle2' }
         }, {
           beforeRender ({ data }) {

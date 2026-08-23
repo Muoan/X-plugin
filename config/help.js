@@ -1,6 +1,6 @@
 export const helpCfg = {
   title: 'X 解析 · 帮助',
-  subTitle: 'Trss-Yunzai & X-plugin',
+  subTitle: 'Miao-Yunzai & Trss-Yunzai & X-plugin',
   colCount: 3,
   colWidth: 265
 }
