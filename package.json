@@ -1,7 +1,7 @@
 {
   "name": "X-plugin",
   "version": "1.0.0",
-  "description": "X/Twitter 链接视频/图片/GIF 资源解析 + 订阅代理 + 网页拉取（类 MApull）",
+  "description": "X/Twitter 链接视频/图片/GIF 资源解析下载 + 订阅代理（v2ray）",
   "type": "module",
   "main": "index.js",
   "author": "OpenClaw"

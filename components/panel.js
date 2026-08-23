@@ -56,11 +56,6 @@ export function getTasks () {
     })
 }
 
-export function getTask (id) {
-  const key = String(id)
-  return tasks.get(key) || [...tasks.values()].find(t => t.code === key) || null
-}
-
 export function createTask (url, { kind, name, files } = {}) {
   const task = makeTask(url, kind, name)
   if (files) task.files = files

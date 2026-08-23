@@ -68,8 +68,3 @@ function curlFetch (url, { timeout, headers }) {
     })
   })
 }
-
-/** 代理抓取 */
-export async function fetchViaProxy (url, { timeout = 15000, headers = {} } = {}) {
-  return fetchText(url, { proxy: true, timeout, headers })
-}
