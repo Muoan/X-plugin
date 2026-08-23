@@ -41,7 +41,7 @@ export function getMySearchSession (owner) {
 
 const X_REG = /(?:https?:\/\/)?(?:www\.|mobile\.|m\.)?(?:x|twitter)\.com\/(?:#!\/)?([A-Za-z0-9_]{1,20})\/status\/(\d+)/i
 
-/** TweetDetail 接口候选（浏览器通道已不再需要，保留兼容） */
+/** 接口候选(兼容) */
 const QUERY_IDS = [
   'XMOz5h24KAZ86qKffKTLdQ',
   '_iJccJ-mHcyaV0nq_odmBA',
@@ -50,7 +50,7 @@ const QUERY_IDS = [
   'qdtN9d7HIvPKzE7rQ3A9Nw'
 ]
 
-/** 解析 Cookie（保留兼容，浏览器通道直接读 config 整串） */
+/** 解析Cookie(兼容) */
 function parseCookie (cookie) {
   const c = String(cookie || '').trim()
   if (!c) return null
@@ -537,7 +537,7 @@ function tweetItemHtml (t) {
   return `<div class="tw">${av}<div class="b"><p class="uname">${esc(t.name || t.screen_name || '')}<span class="uhandle">@${esc(t.screen_name || '')}</span><span class="uhandle"> · ${relTime(ts)}</span></p>${t.text ? `<p class="utext">${textHtml}</p>` : ''}${thumbs ? `<div class="thumb">${thumbs}</div>` : ''}${stats.length ? `<div class="stats">${stats.join(' · ')}</div>` : ''}</div></div>`
 }
 
-/** 用户详情渲染页 */
+/** 用户详情页 */
 export function renderUserHtml (user, tweets) {
   const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   const fmt = (n) => n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n || 0)
@@ -548,7 +548,7 @@ export function renderUserHtml (user, tweets) {
   return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(user.name)} (@${esc(user.screen_name)}) · X 用户</title><style>${LIST_CSS}</style></head><body><div class="wrap"><div class="top"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> 用户资料</div><div class="profile">${banner}${av}<p class="p-name">${esc(user.name)}${user.verified ? svgVerified : ''}</p><p class="p-handle">@${esc(user.screen_name)}${user.protected ? ' 🔒' : ''}</p>${user.bio ? `<p class="p-bio">${esc(user.bio)}</p>` : ''}<div class="p-meta">${user.location ? `<span>📍 ${esc(user.location)}</span>` : ''}${joined ? `<span>📅 ${esc(joined)} 加入</span>` : ''}</div><div class="p-counts"><span><b>${fmt(user.tweets)}</b> 帖子</span><span><b>${fmt(user.following)}</b> 正在关注</span><span><b>${fmt(user.followers)}</b> 粉丝</span><span><b>${fmt(user.likes)}</b> 喜欢</span></div></div><div class="sec">最近帖子${tweets?.length ? ` · ${tweets.length} 条` : ''}</div>${items || '<div class="empty">暂无帖子</div>'}<p class="disc">数据经登录 Cookie 抓取<br>页面 30 分钟内有效</p></div></body></html>`
 }
 
-/** 通用列表渲染页（时间线/搜索/通知） */
+/** 通用列表页 */
 export function renderListHtml ({ title, subtitle = '', items = [], type = 'timeline' }) {
   const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   let body

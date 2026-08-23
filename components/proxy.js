@@ -14,7 +14,7 @@ let currentNode = null
 let lastError = ''
 /** 本次启动者（'download'|'parse'|'media'，空=用户手动） */
 let startedBy = ''
-/** 媒体代理最近活跃时间 */
+/** 代理活跃时间 */
 let mediaTs = 0
 
 // 媒体代理空闲 5 分钟自动关
@@ -259,7 +259,7 @@ export function nextNode () {
   return (cur + 1) % nodes.length
 }
 
-/** 启动代理（外部代理模式时不 spawn，直接标记启用） */
+/** 启动代理 */
 export async function startProxy ({ nodeIndex, skipTest, owner = '' } = {}) {
   const cfg = getConfig()
   if (cfg.proxy?.externalUrl) {
@@ -268,7 +268,7 @@ export async function startProxy ({ nodeIndex, skipTest, owner = '' } = {}) {
     setConfig({ proxy: { enabled: true } })
     return { node: null, ok: true, external: true }
   }
-  // 已在跑：自动场景直接复用，不动启动者
+  // 在跑则复用
   if (child && owner) return { node: currentNode, ok: true }
   killStale()
   if (child) stopProxy()
@@ -311,12 +311,12 @@ export async function startProxy ({ nodeIndex, skipTest, owner = '' } = {}) {
 
 export function stopProxy (owner = '') {
   const cfg = getConfig()
-  // 外部代理模式无进程可关
+  // 外部无进程
   if (cfg.proxy?.externalUrl) {
     startedBy = ''
     return true
   }
-  // 只允许关自己启动的（手动开的任何 owner 关不掉）
+  // 只关自启的
   if (owner && startedBy !== owner) return false
   if (child) {
     const proc = child
@@ -336,7 +336,7 @@ export function stopProxy (owner = '') {
   return true
 }
 
-/** 媒体代理活跃标记 */
+/** 代理活跃标记 */
 export function touchMedia () {
   mediaTs = Date.now()
 }

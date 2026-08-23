@@ -64,14 +64,14 @@ export function createTask (url, { kind, name, files } = {}, kick = true) {
   return task
 }
 
-/** 通用更新任务字段（QQ 侧下载进度推送） */
+/** 更新任务字段 */
 export function updateTask (id, patch) {
   const t = tasks.get(String(id))
   if (t) Object.assign(t, patch)
   return t
 }
 
-/** 已下载完成的记录（QQ 侧多资源） */
+/** 完成记录(QQ侧) */
 export function addFinishedTask ({ url, kind = '资源', name = '', files = [] } = {}) {
   const t = makeTask(url, kind, name)
   const total = files.reduce((s, f) => s + (f.file_size || 0), 0)
@@ -209,7 +209,7 @@ export function revokeShare (code) {
   return hit
 }
 
-/** 清理全部分享记录 */
+/** 清理分享记录 */
 export function clearShares () {
   const n = tasks.size + renders.size
   clearTasks()
@@ -595,7 +595,7 @@ export function start () {
         try {
           if (!proxy.getStatus().running) await proxy.startProxy({ skipTest: true, owner: 'media' })
           proxy.touchMedia()
-        } catch { /* 起代理失败则直连 */ }
+        } catch { /* 代理失败直连 */ }
         let mime = 'application/octet-stream'
         try { mime = MIME[path.extname(new URL(u).pathname).toLowerCase()] || mime } catch { /* ignore */ }
         const args = proxy.getStatus().running
@@ -608,7 +608,7 @@ export function start () {
         return undefined
       }
 
-      // 分享落地页（多资源综合链接）
+      // 分享落地页
       const sMatch = p.match(/^\/s\/(ma-[0-9a-f]+)$/)
       if (sMatch) {
         const t = [...tasks.values()].find(x => x.code === sMatch[1])
@@ -706,7 +706,7 @@ export function start () {
         const type = String(body.type || '')
         const value = String(body.value || '').trim()
         try {
-          // 外部代理模式直接可用；否则确保 v2ray 在跑
+          // 有外部直接用
           if (!proxy.getStatus().external) {
             if (!proxy.getStatus().running) await proxy.startProxy({ skipTest: true, owner: '' })
           }

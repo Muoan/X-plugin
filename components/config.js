@@ -15,7 +15,7 @@ const DEFAULTS = {
     enabled: false,
     // 节点序号
     nodeIndex: 0,
-    // 外部代理（已有代理时直接走它，不启动内置 v2ray）
+    // 外部代理直走
     externalUrl: '',
     // 测试地址
     testUrl: 'https://www.gstatic.com/generate_204'

@@ -54,7 +54,7 @@ async function downloadAll (picks, maxMB) {
   return results
 }
 
-/** 拼下载结果文案 */
+/** 下载结果文案 */
 function buildDownloadMsg (results, srcUrl = '') {
   const ok = results.filter(r => !r.err)
   const t = results[0]?.task
@@ -102,12 +102,12 @@ export class XResource extends plugin {
   }
 
   async autoParse (e) {
-    // 命令消息交给对应命令，不自动下载
+    // 命令不自动下载
     if (/^#?X(?:解析|下载|自动下载)/i.test(e.msg)) return false
     // 自动下载
     const cfg = getConfig()
     if (cfg.x.autoDownload === false) {
-      // 自动下载关闭时自动执行解析任务（渲染页直链）
+      // 关自动下载则解析
       return this.cmdParse(e)
     }
     await e.reply('🔍 识别到 X 链接，正在解析并下载，请稍候…')
@@ -116,7 +116,7 @@ export class XResource extends plugin {
     try {
       const { source, tweet } = await getTweet(info)
       const a = tweet.author || {}
-      // 精简摘要，不铺资源列表（多清晰度/封面走页面选择）
+      // 精简摘要防刷屏
       const base = `📱 X 资源解析${source === 'proxy' ? '（经代理）' : ''}\n👤 ${a.name || a.screen_name || '未知用户'}${a.screen_name ? ` @${a.screen_name}` : ''}\n📝 ${truncate(tweet.text, 120)}`
       const picks = pickDownloadUrls(tweet)
       if (!picks.length) return e.reply(buildXMessage(tweet, source))
@@ -132,7 +132,7 @@ export class XResource extends plugin {
       if (ck) {
         try {
           comments = await getComments(info.id, ck)
-        } catch { /* 评论失败不影响 */ }
+        } catch { /* 评论失败忽略 */ }
       }
       const id = panel.renderPage(renderTweetHtml(tweet, comments), info.url)
       return e.reply(`${base}\n\n${msg}\n🔗 选择页（含全部清晰度）: ${panel.renderLink(id)}\n📴 关闭自动下载: #X自动下载关`)
@@ -169,7 +169,7 @@ export class XResource extends plugin {
     let autoStarted = false
     try {
       autoStarted = await downloader.ensureProxy(true, 'parse')
-    } catch { /* 代理失败也继续尝试 */ }
+    } catch { /* 代理失败继续 */ }
     try {
       const r = await checkCookie(ck)
       return e.reply(r.msg)
@@ -185,28 +185,28 @@ export class XResource extends plugin {
     await e.reply('🔍 正在解析，请稍候…')
     let autoStarted = false
     try {
-      // 解析走代理更稳，用完即关
+      // 代理稳，用完关
       autoStarted = await downloader.ensureProxy(true, 'parse')
       const { source, tweet } = await getTweet(info)
-      // 配置了 Cookie 则附带抓取评论
+      // 有Cookie抓评论
       let comments
       const ck = getConfig().x?.cookie || ''
       if (ck) {
         try {
           comments = await getComments(info.id, ck)
-        } catch { /* 评论失败不影响主流程 */ }
+        } catch { /* 评论失败忽略 */ }
       }
       const id = panel.renderPage(renderTweetHtml(tweet, comments), info.url)
       return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}${comments ? `，已抓取 ${comments.length} 条评论` : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 30 分钟内有效`)
     } catch (err) {
       return e.reply(`❌ 解析失败：${err.message}`)
     } finally {
-      // 本次启动的才关，不干扰下载/手动代理
+      // 只关本次启动的
       if (autoStarted) proxy.stopProxy('parse')
     }
   }
 
-  /** 通用：浏览器抓取需要代理 + Cookie（fn 返回 { html, link, title, reply? }） */
+  /** 抓取需代理+Cookie */
   async _browserCmd (e, fn, okMsg) {
     const ck = getConfig().x?.cookie || ''
     if (!ck) return e.reply('❌ 未配置 Cookie，请先 #X设置Cookie（或 web 面板填写）')
@@ -280,7 +280,7 @@ export class XResource extends plugin {
     }, `🔎 “${q}” 搜索结果已抓到`)
   }
 
-  /** #X查看 <编号>：看自己的搜索会话某条 */
+  /** #X查看：查自己会话 */
   async cmdView (e) {
     const n = Number(e.msg.replace(/^#?X查看\s*/i, '').trim())
     if (!n || n < 1) return e.reply('格式：#X查看 <编号>')

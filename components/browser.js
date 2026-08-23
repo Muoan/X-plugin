@@ -1,5 +1,5 @@
-// 浏览器通道：打开 X 页面，拦截前端自动发出的 GraphQL 响应
-// 前端自带全部认证头（含 x-client-transaction-id），绕过 cf TLS 指纹校验
+// 浏览器拦截GraphQL响应
+// 前端带认证头，绕cf校验
 import { createRequire } from 'node:module'
 import { getConfig } from './config.js'
 
@@ -10,7 +10,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 let busy = null
 
-/** 简单互斥：同一时间只开一个浏览器，避免多用户并发爆内存 */
+/** 单浏览器互斥 */
 function acquire () {
   const prev = busy || Promise.resolve()
   let release
@@ -21,7 +21,7 @@ function acquire () {
 function sleep (ms) { return new Promise(r => setTimeout(r, ms)) }
 
 /**
- * 打开 x.com 页面并拦截前端发出的 GraphQL 响应
+ * 打开X页拦截GraphQL响应
  * @param {string} path 页面路径，如 '/i/status/123'、'/hypefury'、'/search?q=x&f=live'
  * @param {string[]} ops 要拦截的 operationName 列表
  * @param {object} [opts] { timeout, gotoTimeout }
@@ -72,7 +72,7 @@ export async function graphQLByBrowser (path, ops, { timeout = 55000, gotoTimeou
         }
       } catch { /* 忽略解析失败 */ }
     })
-    await page.goto('https://x.com' + path, { waitUntil: 'networkidle2', timeout: gotoTimeout }).catch(() => { /* 超时也继续等数据 */ })
+    await page.goto('https://x.com' + path, { waitUntil: 'networkidle2', timeout: gotoTimeout }).catch(() => { /* 超时仍等数据 */ })
     // 等目标 op 到齐或超时
     const deadline = Date.now() + timeout
     while (Date.now() < deadline) {

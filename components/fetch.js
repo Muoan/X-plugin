@@ -34,7 +34,7 @@ async function nodeFetch (url, { timeout, headers }) {
 function curlFetch (url, { timeout, headers }) {
   const cfg = getConfig()
   const external = cfg.proxy?.externalUrl || ''
-  // curl 支持 socks5h（远端 DNS），外部地址统一转 socks5h 避免本地解析被墙
+  // 外部socks5h防DNS墙
   const proxyArg = external
     ? String(external).replace(/^socks5:\/\//i, 'socks5h://')
     : `socks5h://127.0.0.1:${cfg.proxy?.port || 10890}`
