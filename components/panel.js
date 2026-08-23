@@ -56,12 +56,19 @@ export function getTasks () {
     })
 }
 
-export function createTask (url, { kind, name, files } = {}) {
+export function createTask (url, { kind, name, files } = {}, kick = true) {
   const task = makeTask(url, kind, name)
   if (files) task.files = files
   tasks.set(String(task.id), task)
-  kickTaskWorker()
+  if (kick) kickTaskWorker()
   return task
+}
+
+/** 通用更新任务字段（QQ 侧下载进度推送） */
+export function updateTask (id, patch) {
+  const t = tasks.get(String(id))
+  if (t) Object.assign(t, patch)
+  return t
 }
 
 /** 已下载完成的记录（QQ 侧多资源） */

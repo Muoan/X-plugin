@@ -9,32 +9,57 @@ import * as panel from '../components/panel.js'
 /** 批量下载 */
 async function downloadAll (picks, maxMB) {
   const results = []
+  if (!picks.length) return results
+  // 统一建任务（web 实时进度），完成后由 buildDownloadMsg 复用任务 code
+  const t = panel.createTask(picks[0].url, { kind: picks[0].kind, name: picks[0].author || '' }, false)
+  let doneBytes = 0
+  let totalBytes = 0
   for (const pick of picks) {
     try {
-      const r = await downloader.downloadFile(pick.url, { maxMB })
+      const r = await downloader.downloadWithProgress(pick.url, {
+        id: t.code,
+        maxMB,
+        onProgress: ({ done, total }) => {
+          t.downloaded_size = doneBytes + done
+          t.total_size = totalBytes + (total || done)
+          t.progress = t.total_size ? Math.min(99, Math.round(t.downloaded_size / t.total_size * 100)) : (t.downloaded_size ? 50 : 0)
+          t.status = 'downloading'
+        }
+      })
+      doneBytes += r.size
+      totalBytes += r.size
       const { key, ttlMin } = panel.createFileKey(r.id)
-      results.push({ pick, r, key, ttlMin })
+      t.files.push({ url: pick.url, kind: pick.kind, file_id: r.id, file_name: path.basename(r.path), file_path: r.path, file_size: r.size })
+      results.push({ pick, r, key, ttlMin, task: t })
     } catch (err) {
-      results.push({ pick, err: err.message })
+      t.files.push({ url: pick.url, kind: pick.kind, error: err.message })
+      results.push({ pick, err: err.message, task: t })
     }
   }
+  const ok = results.filter(r => !r.err)
+  const total = t.files.reduce((s, f) => s + (f.file_size || 0), 0)
+  const first = t.files.find(f => f.file_id) || {}
+  panel.updateTask(t.id, {
+    status: ok.length ? 'done' : 'failed',
+    progress: ok.length ? 100 : 0,
+    downloaded_size: total,
+    total_size: total,
+    error: ok.length ? '' : (results[0]?.err || '下载失败'),
+    file_id: first.file_id || '',
+    file_name: first.file_name || '',
+    file_path: first.file_path || '',
+    file_size: total,
+    finished_at: Date.now()
+  })
   return results
 }
 
 /** 拼下载结果文案 */
 async function buildDownloadMsg (results, srcUrl = '') {
   const ok = results.filter(r => !r.err)
-  // 统一记录任务（web 任务列表可见，含失败项）
-  const t = panel.addFinishedTask({
-    url: srcUrl || results[0]?.pick?.url || '',
-    kind: ok[0]?.pick?.kind || results[0]?.pick?.kind || '资源',
-    name: ok[0]?.pick?.author || results[0]?.pick?.author || '',
-    files: results.map(it => it.err
-      ? { url: it.pick?.url || '', kind: it.pick?.kind || '资源', error: it.err }
-      : { url: it.pick?.url || '', kind: it.pick?.kind || '资源', file_id: it.r.id, file_name: path.basename(it.r.path), file_path: it.r.path, file_size: it.r.size })
-  })
+  const t = results[0]?.task
   if (results.length > 1) {
-    return `📥 已下载 ${ok.length}/${results.length} 个资源\n🔗 综合链接：${panel.shareLink(t.code)}\n打开后每个资源一个分链接，点击即下载\n⏳ 链接 ${ok[0]?.ttlMin || 60} 分钟内有效，过期自动删除`
+    return `📥 已下载 ${ok.length}/${results.length} 个资源\n🔗 综合链接：${panel.shareLink(t?.code)}\n打开后每个资源一个分链接，点击即下载\n⏳ 链接 ${ok[0]?.ttlMin || 60} 分钟内有效，过期自动删除`
   }
   const it = results[0]
   const lines = [`📥 已下载 ${ok.length}/${results.length} 个资源`]
@@ -293,6 +318,7 @@ export class XResource extends plugin {
     const url = e.msg.replace(/^#?X下载\s*/i, '').trim()
     const cfg = getConfig()
     await e.reply('⏳ 正在下载资源到服务器，请稍候…')
+    let t
     try {
       let dlUrl
       let kind = '资源'
@@ -309,13 +335,28 @@ export class XResource extends plugin {
         return e.reply('❌ 请提供 X 推文链接或文件直链')
       }
 
-      const r = await downloader.downloadFile(dlUrl, { maxMB: cfg.panel?.maxFileMB || 500 })
+      const t = panel.createTask(dlUrl, { kind, name: path.basename(dlUrl) }, false)
+      const r = await downloader.downloadWithProgress(dlUrl, {
+        id: t.code,
+        maxMB: cfg.panel?.maxFileMB || 500,
+        onProgress: ({ done, total }) => {
+          t.downloaded_size = done
+          t.total_size = total || done
+          t.progress = t.total_size ? Math.min(99, Math.round(done / t.total_size * 100)) : (done ? 50 : 0)
+          t.status = 'downloading'
+        }
+      })
       const { key, ttlMin } = panel.createFileKey(r.id)
-      // 记录任务（web 任务列表可见）
-      panel.addFinishedTask({
-        url: dlUrl,
-        kind,
-        name: path.basename(r.path),
+      panel.updateTask(t.id, {
+        status: 'done',
+        progress: 100,
+        file_id: r.id,
+        file_name: path.basename(r.path),
+        file_path: r.path,
+        file_size: r.size,
+        downloaded_size: r.size,
+        total_size: r.size,
+        finished_at: Date.now(),
         files: [{ url: dlUrl, kind, file_id: r.id, file_name: path.basename(r.path), file_path: r.path, file_size: r.size }]
       })
       const lines = [
@@ -328,6 +369,7 @@ export class XResource extends plugin {
       ]
       return e.reply(lines.join('\n'))
     } catch (err) {
+      if (t) panel.updateTask(t.id, { status: 'failed', error: err.message, finished_at: Date.now() })
       return e.reply(`❌ ${err.message}`)
     }
   }
