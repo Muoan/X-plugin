@@ -27,8 +27,6 @@ const DEFAULTS = {
     autoDownload: true
   },
   pull: {
-    // 文本上限
-    maxText: 2000,
     // 资源上限
     maxLinks: 15,
     timeout: 15000

@@ -2,7 +2,8 @@ import plugin from '../../../lib/plugins/plugin.js'
 import { fetchText } from '../components/fetch.js'
 import { getConfig } from '../components/config.js'
 import { getStatus } from '../components/proxy.js'
-import { extractXUrl, getTweet, buildXMessage } from '../components/x.js'
+import { extractXUrl, getTweet, renderTweetHtml } from '../components/x.js'
+import * as panel from '../components/panel.js'
 
 const MEDIA_EXT = /\.(mp4|webm|mov|mkv|avi|gif|jpg|jpeg|png|webp|bmp|mp3|m4a|flac|wav)(\?|#|$)/i
 
@@ -24,12 +25,13 @@ export class XPull extends plugin {
     const url = (e.msg.match(/(?:#?X拉取|#?拉取网页)\s*(https?:\/\/\S+)/i) || [])[1] || e.match?.[1]
     if (!url) return e.reply('❌ 请提供网页链接')
 
-    // X链接走解析
+    // X链接走解析渲染
     const xInfo = extractXUrl(url)
     if (xInfo) {
       try {
         const { source, tweet } = await getTweet(xInfo)
-        return e.reply(buildXMessage(tweet, source))
+        const id = panel.renderPage(renderTweetHtml(tweet))
+        return e.reply(`📄 已拉取推文${source === 'proxy' ? '（经代理）' : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
       } catch (err) {
         return e.reply(`❌ X 解析失败：${err.message}`)
       }
@@ -81,37 +83,23 @@ export class XPull extends plugin {
       return e.reply(lines.join('\n'))
     }
 
-    // HTML 页面
-    const lines = []
-    lines.push(`🕸 网页拉取${tag}`)
-    lines.push(`🔗 ${res.url || url}`)
+    // HTML 页面 → 渲染页直链
     const title = this.extractTitle(res.body)
-    if (title) lines.push(`📰 ${title}`)
     const desc = this.extractDescription(res.body)
-    if (desc) lines.push(`📝 ${desc}`)
-    lines.push('━━━━━━━━━━━━')
-
     const { videos, images, mediaLinks } = this.extractResources(res.body, res.url || url)
-    let count = 0
-    if (videos.length) {
-      lines.push('🎬 视频资源:')
-      for (const v of videos.slice(0, cfg.pull.maxLinks)) { lines.push(v); count++ }
-    }
-    if (images.length) {
-      lines.push('🖼 图片资源:')
-      for (const img of images.slice(0, cfg.pull.maxLinks)) { lines.push(img); count++ }
-    }
-    if (mediaLinks.length) {
-      lines.push('📎 媒体文件:')
-      for (const m of mediaLinks.slice(0, cfg.pull.maxLinks)) { lines.push(m); count++ }
-    }
-    if (!count) lines.push('（页面内未发现视频/图片资源）')
-    lines.push('━━━━━━━━━━━━')
-    lines.push(`✅ 页面抓取成功 HTTP ${res.status}，正文 ${(res.body || '').length} 字符`)
+    const id = panel.renderPage(renderWebHtml({ url: res.url || url, title, desc, videos, images, mediaLinks, maxLinks: cfg.pull.maxLinks }))
+    return e.reply(`🕸 网页拉取${tag}完成${title ? `「${title}」` : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
+  }
 
-    // 控制总长度
-    const msg = lines.join('\n')
-    return e.reply(msg.length > cfg.pull.maxText ? `${msg.slice(0, cfg.pull.maxText)}…` : msg)
+  /** 网页渲染页模板 */
+  renderWebHtml ({ url, title, desc, videos, images, mediaLinks, maxLinks }) {
+    const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+    const links = (arr, icon) => {
+      const list = (arr || []).slice(0, maxLinks || 10)
+      if (!list.length) return ''
+      return `<p class="sec">${icon} ${list.length} 个</p>` + list.map(u => `<a class="res" href="${esc(u)}">${esc(u.length > 80 ? u.slice(0, 80) + '…' : u)}</a>`).join('')
+    }
+    return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title || '网页拉取')} · X 拉取</title><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:linear-gradient(160deg,#0f172a,#1e293b);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:20px;display:flex;justify-content:center}.card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(37,99,235,.12);padding:24px;max-width:560px;width:100%;border-top:4px solid #2563eb;margin:auto}.hd h1{font-size:18px;color:#1e3a8a;font-weight:700;line-height:1.5;word-break:break-word}.url{font-size:12px;color:#64748b;margin:6px 0 14px;word-break:break-all}.desc{font-size:14px;color:#475569;line-height:1.7;background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:14px;word-break:break-word}.sec{font-size:14px;color:#1e293b;font-weight:700;margin:12px 0 6px}.res{display:block;font-size:12px;color:#2563eb;background:#eff6ff;border-radius:8px;padding:8px 12px;margin-bottom:6px;text-decoration:none;word-break:break-all}.res:hover{background:#dbeafe}.none{font-size:13px;color:#94a3b8;padding:8px 0}.disc{font-size:11px;color:#94a3b8;text-align:center;margin-top:14px;line-height:1.7}</style></head><body><div class="card"><div class="hd"><h1>${esc(title || '（无标题）')}</h1></div><p class="url">${esc(url)}</p>${desc ? `<div class="desc">${esc(desc)}</div>` : ''}${links(videos, '🎬 视频资源')}${links(images, '🖼 图片资源')}${links(mediaLinks, '📎 媒体文件')}${(!videos || !videos.length) && (!images || !images.length) && (!mediaLinks || !mediaLinks.length) ? '<p class="none">页面内未发现视频/图片资源</p>' : ''}<p class="disc">页面 1 小时内有效</p></div></body></html>`
   }
 
   extractTitle (html) {

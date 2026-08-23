@@ -2,7 +2,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { getConfig, setConfig, DATA_DIR, PLUGIN_DIR } from './config.js'
 import { extractXUrl, getTweet, buildXMessage, formatMedia, pickDownloadUrls } from './x.js'
 import * as proxy from './proxy.js'
@@ -109,6 +109,21 @@ export function addFinishedTask ({ url, kind = '资源', name = '', files = [], 
 
 export function shareLink (code) {
   return `${publicUrl()}/s/${code}`
+}
+
+/** 渲染页存储（TTL 固定 1h 不可改） */
+const renders = new Map()
+
+/** 保存渲染页 */
+export function renderPage (html) {
+  const id = downloader.maId()
+  renders.set(id, { html, expireAt: Date.now() + 60 * 60 * 1000 })
+  return id
+}
+
+/** 渲染页直链 */
+export function renderLink (id) {
+  return `${publicUrl()}/v/${id}`
 }
 
 /** 打 zip 合并包 */
@@ -531,6 +546,9 @@ export function start () {
     for (const [id, rec] of fileKeys) {
       if (now > rec.expireAt) fileKeys.delete(String(id))
     }
+    for (const [id, rec] of renders) {
+      if (now > rec.expireAt) renders.delete(id)
+    }
   }
   sweep()
   if (cleanupTimer) clearInterval(cleanupTimer)
@@ -550,6 +568,33 @@ export function start () {
       // 前端静态资源
       if (p === '/style.css') return sendFile(res, path.join(WEB_DIR, 'style.css'), 'text/css; charset=utf-8')
       if (p === '/app.js') return sendFile(res, path.join(WEB_DIR, 'app.js'), 'application/javascript; charset=utf-8')
+
+      // 渲染页直链（解析/拉取结果，TTL 1h）
+      const vMatch = p.match(/^\/v\/(ma-[0-9a-f]+)$/)
+      if (vMatch) {
+        const rec = renders.get(vMatch[1])
+        if (!rec || Date.now() > rec.expireAt) {
+          if (rec) renders.delete(vMatch[1])
+          return sendHtml(res, shareNotFound())
+        }
+        return sendHtml(res, rec.html)
+      }
+
+      // 媒体代理（仅 twimg，流式）
+      if (p === '/img') {
+        const u = url.searchParams.get('u') || ''
+        if (!/^https:\/\/(pbs|video|abs)\.twimg\.com\//i.test(u)) return sendText(res, 400, 'bad url')
+        let mime = 'application/octet-stream'
+        try { mime = MIME[path.extname(new URL(u).pathname).toLowerCase()] || mime } catch { /* ignore */ }
+        const args = proxy.getStatus().enabled
+          ? ['-sL', '--max-time', '300', '--socks5-hostname', '127.0.0.1:10890', '--connect-timeout', '5', '-o', '-', u]
+          : ['-sL', '--max-time', '300', '--connect-timeout', '5', '-o', '-', u]
+        res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store', 'Content-Disposition': 'inline' })
+        const cp = spawn('curl', args, { stdio: ['ignore', 'pipe', 'ignore'] })
+        cp.stdout.pipe(res)
+        cp.on('error', () => res.end())
+        return undefined
+      }
 
       // 分享落地页（多资源综合链接）
       const sMatch = p.match(/^\/s\/(ma-[0-9a-f]+)$/)

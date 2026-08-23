@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import path from 'node:path'
-import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls } from '../components/x.js'
+import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
 import * as downloader from '../components/downloader.js'
 import * as panel from '../components/panel.js'
@@ -52,6 +52,8 @@ function fmtSize (n) {
   return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n >= 1024 ? (n / 1024).toFixed(0) + ' KB' : n + ' B'
 }
 
+
+
 export class XResource extends plugin {
   constructor () {
     super({
@@ -69,6 +71,8 @@ export class XResource extends plugin {
   }
 
   async autoParse (e) {
+    // 命令消息交给对应命令，不自动下载
+    if (/^#?X(?:解析|下载|拉取|自动下载)/i.test(e.msg)) return false
     // 自动下载
     const cfg = getConfig()
     if (cfg.x.autoDownload === false) {
@@ -101,8 +105,17 @@ ${await buildDownloadMsg(results, info.url)}
   }
 
   async cmdParse (e) {
-    await this.doParse(e, e.msg.replace(/^#?X解析\s*/i, ''))
-    return true
+    const text = e.msg.replace(/^#?X解析\s*/i, '').trim()
+    const info = extractXUrl(text)
+    if (!info) return e.reply('未识别到 X/Twitter 链接，格式：x.com/用户名/status/推文ID')
+    await e.reply('🔍 正在解析，请稍候…')
+    try {
+      const { source, tweet } = await getTweet(info)
+      const id = panel.renderPage(renderTweetHtml(tweet))
+      return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
+    } catch (err) {
+      return e.reply(`❌ 解析失败：${err.message}`)
+    }
   }
 
   async cmdDownload (e) {

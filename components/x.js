@@ -136,3 +136,22 @@ export function buildXMessage (tweet, source) {
   lines.push(`🔗 原文: ${tweet.url}`)
   return lines.join('\n')
 }
+
+/** 推文渲染页模板 */
+export function renderTweetHtml (tweet) {
+  const a = tweet.author || {}
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+  const fmt = (n) => n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n || 0)
+  const media = tweet.media || {}
+  const imgs = (media.photos || []).map(ph => `<img src="/img?u=${encodeURIComponent(ph.url)}" alt="photo" loading="lazy">`).join('')
+  const vids = (media.videos || []).map(v => `<video controls preload="metadata" src="/img?u=${encodeURIComponent(v.url)}" poster="/img?u=${encodeURIComponent(v.thumbnail_url || '')}"></video>`).join('')
+  const when = tweet.created_at ? new Date(tweet.created_at).toLocaleString('zh-CN', { hour12: false }) : ''
+  const stats = []
+  if (tweet.views) stats.push(`👀 ${fmt(tweet.views)}`)
+  if (tweet.likes) stats.push(`👍 ${fmt(tweet.likes)}`)
+  if (tweet.retweets) stats.push(`🔁 ${fmt(tweet.retweets)}`)
+  if (tweet.replies) stats.push(`💬 ${fmt(tweet.replies)}`)
+  const avatar = a.avatar_url ? `<img class="avatar" src="/img?u=${encodeURIComponent(a.avatar_url)}" alt="">` : '<div class="avatar">🧑</div>'
+  const sens = tweet.possibly_sensitive ? '<p class="sens">⚠️ 该推文可能包含敏感内容</p>' : ''
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(a.name || '推文')} · X 解析</title><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:linear-gradient(160deg,#0f172a,#1e293b);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:20px;display:flex;justify-content:center}.card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(37,99,235,.12);padding:24px;max-width:560px;width:100%;border-top:4px solid #2563eb;margin:auto}.head{display:flex;align-items:center;gap:12px;margin-bottom:14px}.avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#eef4ff;display:flex;align-items:center;justify-content:center;font-size:22px}.name{font-size:16px;color:#1e293b;font-weight:700}.handle{font-size:13px;color:#64748b}.when{font-size:12px;color:#94a3b8;margin-top:2px}.text{font-size:15px;color:#1e293b;line-height:1.7;white-space:pre-wrap;word-break:break-word;background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:14px}.sens{color:#b45309;font-size:13px;background:#fffbeb;border-radius:8px;padding:8px 12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px}.grid img{width:100%;border-radius:10px;display:block;background:#f1f5f9}.grid video{width:100%;border-radius:10px;background:#000;max-height:70vh}.stats{display:flex;gap:16px;color:#64748b;font-size:13px;margin-bottom:14px;flex-wrap:wrap}.stats span{background:#f1f5f9;border-radius:999px;padding:4px 12px}.link{display:block;text-align:center;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;font-size:14px;border-radius:10px;padding:12px;margin-bottom:12px}.link:hover{background:#1d4ed8}.disc{font-size:11px;color:#94a3b8;text-align:center;line-height:1.7}</style></head><body><div class="card"><div class="head">${avatar}<div><p class="name">${esc(a.name || a.screen_name || '未知用户')}</p><p class="handle">@${esc(a.screen_name || '')}${when ? ' · ' + esc(when) : ''}</p></div></div>${sens}${tweet.text ? `<div class="text">${esc(tweet.text)}</div>` : ''}${imgs ? `<div class="grid">${imgs}</div>` : ''}${vids ? `<div class="grid">${vids}</div>` : ''}${stats.length ? `<div class="stats">${stats.map(s => `<span>${s}</span>`).join('')}</div>` : ''}<a class="link" href="${esc(tweet.url || '#')}" target="_blank" rel="noopener">🔗 查看原文</a><p class="disc">媒体经服务器代理加载，无法显示请开启 #X代理<br>页面 1 小时内有效</p></div></body></html>`
+}
