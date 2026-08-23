@@ -65,6 +65,9 @@ main { padding: 18px 22px 40px; max-width: 1100px; margin: 0 auto; }
 .task-meta { display: flex; gap: 14px; color: var(--dim); font-size: 12px; margin-top: 8px; flex-wrap: wrap; }
 .task-meta .cleaned-tag { color: var(--dim); }
 .task-actions { display: flex; gap: 8px; margin-top: 10px; }
+.file-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 10px; background: #f6f8fb; border-radius: 6px; margin-top: 6px; word-break: break-all; }
+.file-row .fs { color: var(--dim); margin-left: auto; }
+.file-row.zip { background: #eef4ff; }
 .task-err { color: var(--err); font-size: 12px; margin-top: 8px; word-break: break-all; }
 .empty { color: var(--dim); text-align: center; padding: 40px 0; }
 

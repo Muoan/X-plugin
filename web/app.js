@@ -108,10 +108,28 @@ function renderTasks () {
     const pct = Math.round(t.progress || 0)
     const cleaned = t.file_deleted === 1
     const name = esc(t.file_name || t.title || t.url.replace(/^https?:\/\//, '').slice(0, 50))
+    const files = t.files || []
+    const multi = files.length > 1
     const canDl = t.status === 'done' && t.file_id && !cleaned
     const canRetry = ['failed', 'canceled'].includes(t.status)
     const stText = cleaned ? '已清理' : (stName[t.status] || esc(t.status))
     const stCls = cleaned ? 'done' : esc(t.status)
+    const fileRows = (multi && t.status === 'done')
+      ? files.map(f => {
+        const fdel = f.file_deleted === 1
+        const nm = esc(f.file_name || '')
+        if (fdel) return `<div class="file-row">${nm} <span class="fs">🗑 已清理</span></div>`
+        if (f.error) return `<div class="file-row">${nm || esc(f.url)} <span class="fs task-err">${esc(f.error)}</span></div>`
+        if (!f.file_id) return `<div class="file-row">${nm || esc(f.url)} <span class="fs">…</span></div>`
+        return `<div class="file-row">${nm} <span class="fs">${fmtSize(f.file_size)}</span>` +
+          `<button class="btn sm" onclick="downloadFile('${f.file_id}')">⬇</button>` +
+          `<button class="btn sm" onclick="previewFile('${f.file_id}')">👁</button></div>`
+      }).join('')
+      : ''
+    const zipRow = (multi && t.status === 'done' && t.zip_id && t.zip_deleted !== 1)
+      ? `<div class="file-row zip">📦 ${esc(t.zip_name)} <span class="fs">${fmtSize(t.zip_size)}</span>` +
+        `<button class="btn sm primary" onclick="downloadFile('${t.zip_id}')">⬇ 下载全部</button></div>`
+      : ''
     return `<div class="task-card" data-id="${t.id}">
       <div class="task-head">
         <span class="task-id">#${esc(t.code || t.id)}</span>
@@ -129,9 +147,12 @@ function renderTasks () {
         ${cleaned ? '<span class="cleaned-tag">🗑 已过期清理</span>' : ''}
       </div>
       ${t.error ? `<div class="task-err">${esc(t.error)}</div>` : ''}
+      ${fileRows}
+      ${zipRow}
       <div class="task-actions">
-        ${canDl ? `<button class="btn sm" onclick="downloadFile('${t.file_id}')">⬇ 下载文件</button>` : ''}
-        ${canDl ? `<button class="btn sm" onclick="previewFile('${t.file_id}')">👁 预览</button>` : ''}
+        ${t.status === 'done' && (t.files || []).some(f => f.file_id) ? `<button class="btn sm" onclick="copyShare('${esc(t.code || '')}')">🔗 分享</button>` : ''}
+        ${canDl && !multi ? `<button class="btn sm" onclick="downloadFile('${t.file_id}')">⬇ 下载文件</button>` : ''}
+        ${canDl && !multi ? `<button class="btn sm" onclick="previewFile('${t.file_id}')">👁 预览</button>` : ''}
         ${canRetry ? `<button class="btn sm" onclick="retryTask(${t.id})">🔄 重试</button>` : ''}
         ${t.status === 'queued' || t.status === 'downloading' ? `<button class="btn sm danger" onclick="cancelTask(${t.id})">✕ 取消</button>` : ''}
         <button class="btn sm danger" onclick="deleteTask(${t.id}, '${esc(t.code || '')}')">🗑 删除</button>
@@ -192,6 +213,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview
 async function retryTask (id) { try { await api(`/api/tasks/${id}/retry`, { method: 'POST' }); toast('已重新入队'); refreshAll() } catch (err) { toast(err.message, true) } }
 async function cancelTask (id) { try { await api(`/api/tasks/${id}/cancel`, { method: 'POST' }); refreshAll() } catch (err) { toast(err.message, true) } }
 async function deleteTask (id, code) { if (!confirm(`确认删除任务 #${code || id}（含已下载文件）？`)) return; try { await api(`/api/tasks/${id}`, { method: 'DELETE' }); refreshAll(); loadFiles() } catch (err) { toast(err.message, true) } }
+
+async function copyShare (code) {
+  const link = `${location.origin}/s/${code}`
+  try {
+    await navigator.clipboard.writeText(link)
+    toast('✅ 分享链接已复制：' + link)
+  } catch {
+    prompt('复制分享链接：', link)
+  }
+}
 
 async function loadFiles () {
   try {

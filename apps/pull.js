@@ -21,7 +21,8 @@ export class XPull extends plugin {
   }
 
   async pull (e) {
-    const url = e.match[1]
+    const url = (e.msg.match(/(?:#?X拉取|#?拉取网页)\s*(https?:\/\/\S+)/i) || [])[1] || e.match?.[1]
+    if (!url) return e.reply('❌ 请提供网页链接')
 
     // X链接走解析
     const xInfo = extractXUrl(url)

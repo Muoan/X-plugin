@@ -54,6 +54,25 @@ export async function getTweet (info, { useProxyFallback = true } = {}) {
   throw new Error(errors.join('；') || '未知错误')
 }
 
+/** 挑下载资源（视频优先，纯图全下） */
+export function pickDownloadUrls (tweet) {
+  const media = tweet.media?.all || []
+  const vids = []
+  const imgs = []
+  for (const item of media) {
+    if (item.type === 'video' || item.type === 'gif') {
+      const variants = (item.variants || [])
+        .filter(v => (v.content_type || '').includes('mp4'))
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
+      if (variants[0]?.url) vids.push({ url: variants[0].url, kind: item.type === 'gif' ? 'GIF' : '视频' })
+    } else if ((item.type === 'image' || item.type === 'photo') && item.url) {
+      imgs.push({ url: item.url, kind: '图片' })
+    }
+  }
+  if (vids.length) return vids
+  return imgs
+}
+
 /** 媒体转链接 */
 export function formatMedia (tweet) {
   const lines = []
@@ -78,7 +97,7 @@ export function formatMedia (tweet) {
         lines.push(`其他清晰度:\n${alt}`)
       }
       if (item.thumbnail_url) lines.push(`🖼 封面: ${item.thumbnail_url}`)
-    } else if (item.type === 'image' && item.url) {
+    } else if ((item.type === 'image' || item.type === 'photo') && item.url) {
       lines.push(`🖼 图片: ${item.url}`)
     }
   }

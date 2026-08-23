@@ -246,6 +246,7 @@ function progressOnce (url, { onProgress, maxMB, id: wantId }) {
         }, 500)
       }
 
+      let result = null
       await new Promise((res, rej) => {
         child.on('error', (err) => {
           if (timer) clearInterval(timer)
@@ -269,9 +270,11 @@ function progressOnce (url, { onProgress, maxMB, id: wantId }) {
             return rej(new Error(`文件过大(${(size / 1048576).toFixed(1)}MB)，超过限制 ${maxMB}MB`))
           }
           fs.renameSync(tmp, final)
-          res({ id, path: final, size, ext })
+          result = { id, path: final, size, ext }
+          res()
         })
       })
+      resolve(result)
     })().catch(reject)
   })
 }

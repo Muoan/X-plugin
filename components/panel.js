@@ -2,8 +2,9 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { execFile } from 'node:child_process'
 import { getConfig, setConfig, DATA_DIR, PLUGIN_DIR } from './config.js'
-import { extractXUrl, getTweet, buildXMessage, formatMedia } from './x.js'
+import { extractXUrl, getTweet, buildXMessage, formatMedia, pickDownloadUrls } from './x.js'
 import * as proxy from './proxy.js'
 import * as downloader from './downloader.js'
 import { fetchText } from './fetch.js'
@@ -37,6 +38,12 @@ function makeTask (url, kind, name) {
     file_path: '',
     file_size: 0,
     file_deleted: 0,
+    files: [],
+    zip_id: '',
+    zip_name: '',
+    zip_path: '',
+    zip_size: 0,
+    zip_deleted: 0,
     created_at: Date.now(),
     finished_at: 0,
     _canceled: false,
@@ -59,11 +66,59 @@ export function getTask (id) {
   return tasks.get(key) || [...tasks.values()].find(t => t.code === key) || null
 }
 
-export function createTask (url, { kind, name } = {}) {
+export function createTask (url, { kind, name, files } = {}) {
   const task = makeTask(url, kind, name)
+  if (files) task.files = files
   tasks.set(String(task.id), task)
   kickTaskWorker()
   return task
+}
+
+/** 已下载完成的记录（QQ 侧多资源） */
+export function addFinishedTask ({ url, kind = '资源', name = '', files = [], zip } = {}) {
+  const t = makeTask(url, kind, name)
+  const total = files.reduce((s, f) => s + (f.file_size || 0), 0)
+  t.files = files.map(f => ({
+    url: f.url || '',
+    kind: f.kind || '资源',
+    file_id: f.file_id || '',
+    file_name: f.file_name || '',
+    file_path: f.file_path || '',
+    file_size: f.file_size || 0,
+    file_deleted: 0
+  }))
+  if (zip) {
+    t.zip_id = zip.id
+    t.zip_name = zip.name
+    t.zip_path = zip.path
+    t.zip_size = zip.size
+  }
+  const ok = t.files.filter(f => f.file_id)
+  t.file_id = ok[0]?.file_id || ''
+  t.file_name = ok[0]?.file_name || ''
+  t.file_path = ok[0]?.file_path || ''
+  t.file_size = ok[0]?.file_size || 0
+  t.downloaded_size = total
+  t.total_size = total
+  t.progress = 100
+  t.status = 'done'
+  t.finished_at = Date.now()
+  tasks.set(String(t.id), t)
+  return t
+}
+
+export function shareLink (code) {
+  return `${publicUrl()}/s/${code}`
+}
+
+/** 打 zip 合并包 */
+export async function zipFiles (filePaths) {
+  if (!filePaths.length) return null
+  const zipId = downloader.maId()
+  const zipPath = path.join(downloader.DOWNLOAD_DIR, `${zipId}.zip`)
+  await execZip(filePaths, zipPath)
+  createFileKey(zipId)
+  return { id: zipId, name: path.basename(zipPath), path: zipPath, size: fs.statSync(zipPath).size }
 }
 
 export function cancelTask (id) {
@@ -95,11 +150,13 @@ export function retryTask (id) {
 export function deleteTask (id) {
   const t = tasks.get(String(id))
   if (!t) return false
-  if (t.file_id) {
-    const f = findFileById(t.file_id)
-    if (f) fs.rmSync(f, { force: true })
-    fileKeys.delete(String(t.file_id))
+  for (const f of (t.files || [])) {
+    if (f.file_path) fs.rmSync(f.file_path, { force: true })
+    if (f.file_id) fileKeys.delete(String(f.file_id))
   }
+  if (t.zip_path) fs.rmSync(t.zip_path, { force: true })
+  if (t.zip_id) fileKeys.delete(String(t.zip_id))
+  if (t.file_id) fileKeys.delete(String(t.file_id))
   tasks.delete(String(id))
   return true
 }
@@ -133,6 +190,8 @@ async function runTask (t) {
   t.progress = 0
   try {
     const maxMB = getConfig().panel?.maxFileMB || 500
+    const picks = (t.files || []).filter(f => !f.file_id && !f.error)
+    if (picks.length) return runMultiTask(t, picks, maxMB)
     const r = await downloader.downloadWithProgress(t.url, {
       id: t.code,
       maxMB,
@@ -156,6 +215,7 @@ async function runTask (t) {
     t.file_name = path.basename(r.path)
     t.file_path = r.path
     t.file_size = r.size
+    t.files = [{ url: t.url, kind: t.kind, file_id: r.id, file_name: path.basename(r.path), file_path: r.path, file_size: r.size, file_deleted: 0 }]
     t.downloaded_size = r.size
     t.total_size = r.size
     t.progress = 100
@@ -168,6 +228,82 @@ async function runTask (t) {
     t.error = err?.message || String(err)
     t.finished_at = Date.now()
   }
+}
+
+/** zip 打包 */
+function execZip (files, outPath) {
+  return new Promise((res, rej) => {
+    execFile('zip', ['-j', '-q', outPath, ...files], (err) => err ? rej(err) : res())
+  })
+}
+
+/** 多资源任务 */
+async function runMultiTask (t, picks, maxMB) {
+  const files = []
+  let total = 0
+  for (const p of picks) {
+    try {
+      const r = await downloader.downloadWithProgress(p.url, {
+        id: downloader.maId(),
+        maxMB,
+        onProgress: ({ done, total: tot }) => {
+          const now = Date.now()
+          const base = files.reduce((s, f) => s + (f.file_size || 0), 0)
+          if (t._lastTs) t.speed = Math.max(0, Math.round((done + base - t._lastDone) / ((now - t._lastTs) / 1000)))
+          t._lastDone = done + base
+          t._lastTs = now
+          t.downloaded_size = done + base
+          t.total_size = total + tot
+          t.progress = t.total_size ? Math.min(99, Math.round(t.downloaded_size / t.total_size * 100)) : (done ? 50 : 0)
+        }
+      })
+      if (t._canceled) {
+        fs.rmSync(r.path, { force: true })
+        for (const f of files) fs.rmSync(f.file_path, { force: true })
+        t.status = 'canceled'
+        t.finished_at = Date.now()
+        return
+      }
+      createFileKey(r.id)
+      files.push({ url: p.url, kind: p.kind, file_id: r.id, file_name: path.basename(r.path), file_path: r.path, file_size: r.size, file_deleted: 0 })
+      total += r.size
+      t.files = files
+    } catch (err) {
+      files.push({ url: p.url, kind: p.kind, error: err?.message || String(err), file_id: '', file_path: '' })
+      t.files = files
+    }
+  }
+  const ok = files.filter(f => f.file_id)
+  if (!ok.length) {
+    t.status = 'failed'
+    t.error = '全部资源下载失败'
+    t.finished_at = Date.now()
+    return
+  }
+  if (ok.length >= 2) {
+    try {
+      const zipId = downloader.maId()
+      const zipPath = path.join(downloader.DOWNLOAD_DIR, `${zipId}.zip`)
+      await execZip(ok.map(f => f.file_path), zipPath)
+      createFileKey(zipId)
+      t.zip_id = zipId
+      t.zip_name = path.basename(zipPath)
+      t.zip_path = zipPath
+      t.zip_size = fs.statSync(zipPath).size
+    } catch (err) {
+      t.zip_error = err?.message || String(err)
+    }
+  }
+  t.file_id = ok[0].file_id
+  t.file_name = ok[0].file_name
+  t.file_path = ok[0].file_path
+  t.file_size = ok[0].file_size
+  t.downloaded_size = total
+  t.total_size = total
+  t.progress = 100
+  t.speed = 0
+  t.status = 'done'
+  t.finished_at = Date.now()
 }
 
 function createFileKey (id) {
@@ -222,23 +358,6 @@ export function downloadLink (id, key) {
   const u = new URL(`${publicUrl()}/api/files/${id}/download`)
   u.searchParams.set('key', key)
   return u.toString()
-}
-
-/** 挑最佳资源 */
-function pickFromTweet (tweet) {
-  const media = tweet.media?.all || []
-  for (const item of media) {
-    if (item.type === 'video' || item.type === 'gif') {
-      const variants = (item.variants || [])
-        .filter(v => (v.content_type || '').includes('mp4'))
-        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
-      if (variants[0]?.url) return { url: variants[0].url, kind: item.type === 'gif' ? 'GIF' : '视频' }
-    }
-  }
-  for (const item of media) {
-    if (item.type === 'image' && item.url) return { url: item.url, kind: '图片' }
-  }
-  return null
 }
 
 let server = null
@@ -317,6 +436,36 @@ function sendFile (res, file, type) {
 function sendHtml (res, html) {
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
   res.end(html)
+}
+
+/** 分享落地页 */
+function sharePage (t) {
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+  const ttlMin = Math.max(1, Math.round(((getConfig().panel?.fileTtlMin || 60) || 60)))
+  const rows = (t.files || []).map((f, i) => {
+    if (f.file_deleted === 1) return `<div class="row"><span class="idx">${i + 1}️⃣</span><div class="info"><p class="nm">${esc(f.file_name || '资源')}</p><p class="meta">🗑 已过期清理</p></div></div>`
+    if (!f.file_id) return `<div class="row"><span class="idx">${i + 1}️⃣</span><div class="info"><p class="nm">${esc(f.file_name || f.kind || '资源')}</p><p class="meta err">下载失败：${esc(f.error || '未知错误')}</p></div></div>`
+    const rec = createFileKey(f.file_id)
+    return `<div class="row"><span class="idx">${i + 1}️⃣</span><div class="info"><p class="nm">${esc(f.file_name || '资源')}</p><p class="meta">${esc(f.kind || '')} · ${fmtSize(f.file_size)}</p></div><a class="btn" href="${downloadLink(f.file_id, rec.key)}">⬇ 下载</a></div>`
+  }).join('')
+  let zipRow = ''
+  if (t.zip_id && t.zip_deleted !== 1) {
+    const rec = createFileKey(t.zip_id)
+    zipRow = `<div class="row zip"><span class="idx">📦</span><div class="info"><p class="nm">${esc(t.zip_name || '全部资源.zip')}</p><p class="meta">合并包 · ${fmtSize(t.zip_size)}</p></div><a class="btn primary" href="${downloadLink(t.zip_id, rec.key)}">⬇ 下载全部</a></div>`
+  }
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>X 资源分享</title><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:linear-gradient(160deg,#0f172a,#1e293b);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:20px;display:flex;justify-content:center}.card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(37,99,235,.12);padding:24px;max-width:520px;width:100%;border-top:4px solid #2563eb;margin:auto}.hd{display:flex;align-items:center;gap:10px;margin-bottom:4px}.hd h1{font-size:19px;color:#1e3a8a;font-weight:700}.sub{font-size:13px;color:#64748b;margin-bottom:18px}.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9}.row:last-child{border-bottom:none}.idx{font-size:16px;width:26px;text-align:center;flex-shrink:0}.info{flex:1;min-width:0}.nm{font-size:15px;color:#1e293b;font-weight:600;word-break:break-all}.meta{font-size:12px;color:#94a3b8;margin-top:2px}.meta.err{color:#dc2626}.btn{display:inline-block;padding:9px 16px;border-radius:9px;font-size:13px;text-decoration:none;font-weight:600;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;white-space:nowrap}.btn.primary{background:#2563eb;color:#fff;border-color:#2563eb}.btn.primary:hover{background:#1d4ed8}.row.zip{background:#eff6ff;border-radius:10px;padding:12px;border:none;margin-top:12px}.disc{margin-top:16px;font-size:11px;color:#94a3b8;line-height:1.7;text-align:center}</style></head><body><div class="card"><div class="hd"><h1>📥 X 资源分享</h1></div><p class="sub">${esc(t.kind || '资源')}${t.title ? ' · ' + esc(t.title) : ''}</p>${rows}${zipRow}<p class="disc">共 ${(t.files || []).length} 个资源，链接 ${ttlMin} 分钟内有效<br>手机端请使用浏览器打开下载</p></div></body></html>`
+}
+
+/** 分享失效页 */
+function shareNotFound () {
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>链接失效</title><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#1e293b);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(37,99,235,.12);padding:32px;max-width:380px;width:100%;text-align:center;border-top:4px solid #dc2626}h1{font-size:18px;color:#991b1b;margin-bottom:10px}p{font-size:13px;color:#64748b}</style></head><body><div class="card"><h1>🔗 链接无效或已过期</h1><p>资源可能已被清理，请重新获取</p></div></body></html>`
+}
+
+function fmtSize (n) {
+  n = Number(n) || 0
+  if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB'
+  if (n >= 1024) return (n / 1024).toFixed(1) + ' KB'
+  return n + ' B'
 }
 
 function sendText (res, status, text) {
@@ -399,6 +548,14 @@ export function start () {
       // 前端静态资源
       if (p === '/style.css') return sendFile(res, path.join(WEB_DIR, 'style.css'), 'text/css; charset=utf-8')
       if (p === '/app.js') return sendFile(res, path.join(WEB_DIR, 'app.js'), 'application/javascript; charset=utf-8')
+
+      // 分享落地页（多资源综合链接）
+      const sMatch = p.match(/^\/s\/(ma-[0-9a-f]+)$/)
+      if (sMatch) {
+        const t = [...tasks.values()].find(x => x.code === sMatch[1])
+        if (!t) return sendHtml(res, shareNotFound())
+        return sendHtml(res, sharePage(t))
+      }
 
       // 文件验证页
       const fMatch = p.match(/^\/f\/(ma-[0-9a-f]+|[0-9a-f]+)$/)
@@ -528,11 +685,17 @@ export function start () {
           if (info) {
             try {
               const { tweet } = await getTweet(info)
-              const pick = pickFromTweet(tweet)
-              if (!pick) return json(res, 400, { error: '该推文没有可下载的视频/图片资源' })
-              dlUrl = pick.url
-              kind = pick.kind
-              name = tweet.author?.screen_name ? `@${tweet.author.screen_name}` : ''
+              const picks = pickDownloadUrls(tweet)
+              if (!picks.length) {
+                console.error('[X面板] 无资源 media =', JSON.stringify((tweet?.media?.all || []).map(m => m.type)), 'source =', source)
+                return json(res, 400, { error: '该推文没有可下载的视频/图片资源' })
+              }
+              const task = createTask(url, {
+                kind: picks[0].kind,
+                name: tweet.author?.screen_name ? `@${tweet.author.screen_name}` : '',
+                files: picks.map(p => ({ url: p.url, kind: p.kind }))
+              })
+              return json(res, 200, { task })
             } catch (err) {
               return json(res, 400, { error: '推文解析失败：' + (err?.message || err) })
             }
