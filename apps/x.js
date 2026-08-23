@@ -5,21 +5,50 @@ import { getConfig, setConfig } from '../components/config.js'
 import * as downloader from '../components/downloader.js'
 import * as panel from '../components/panel.js'
 
-/** 挑最佳资源 */
-function pickDownloadUrl (tweet) {
+/** 挑下载资源（视频优先，纯图全下） */
+function pickDownloadUrls (tweet) {
   const media = tweet.media?.all || []
+  const vids = []
+  const imgs = []
   for (const item of media) {
     if (item.type === 'video' || item.type === 'gif') {
       const variants = (item.variants || [])
         .filter(v => (v.content_type || '').includes('mp4'))
         .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
-      if (variants[0]?.url) return { url: variants[0].url, kind: item.type === 'gif' ? 'GIF' : '视频' }
+      if (variants[0]?.url) vids.push({ url: variants[0].url, kind: item.type === 'gif' ? 'GIF' : '视频' })
+    } else if (item.type === 'image' && item.url) {
+      imgs.push({ url: item.url, kind: '图片' })
     }
   }
-  for (const item of media) {
-    if (item.type === 'image' && item.url) return { url: item.url, kind: '图片' }
+  if (vids.length) return vids
+  return imgs
+}
+
+/** 批量下载 */
+async function downloadAll (picks, maxMB) {
+  const results = []
+  for (const pick of picks) {
+    try {
+      const r = await downloader.downloadFile(pick.url, { maxMB })
+      const { key, ttlMin } = panel.createFileKey(r.id)
+      results.push({ pick, r, key, ttlMin })
+    } catch (err) {
+      results.push({ pick, err: err.message })
+    }
   }
-  return null
+  return results
+}
+
+/** 拼下载结果文案 */
+function buildDownloadMsg (results) {
+  const ok = results.filter(r => !r.err)
+  const lines = [`📥 已下载 ${ok.length}/${results.length} 个资源`]
+  results.forEach((it, i) => {
+    if (it.err) lines.push(`${i + 1}️⃣ ${it.pick.kind} 失败：${it.err}`)
+    else lines.push(`${i + 1}️⃣ ${it.pick.kind}（${fmtSize(it.r.size)}）\n🔗 ${panel.downloadLink(it.r.id, it.key)}`)
+  })
+  lines.push(`⏳ 直链 ${ok[0]?.ttlMin || 60} 分钟内有效，过期自动删除`)
+  return lines.join('\n')
 }
 
 function fmtSize (n) {
@@ -55,17 +84,13 @@ export class XResource extends plugin {
     try {
       const { source, tweet } = await getTweet(info)
       const base = buildXMessage(tweet, source)
-      const pick = pickDownloadUrl(tweet)
-      if (!pick) return e.reply(base)
-      const r = await downloader.downloadFile(pick.url, { maxMB: cfg.panel?.maxFileMB || 500 })
-      const { key, ttlMin } = panel.createFileKey(r.id)
+      const picks = pickDownloadUrls(tweet)
+      if (!picks.length) return e.reply(base)
+      const results = await downloadAll(picks, cfg.panel?.maxFileMB || 500)
       return e.reply(`${base}
 
 ━━━━━━━━━━━━
-📥 已自动下载${pick.kind}（${fmtSize(r.size)}）
-🔗 直链: ${panel.downloadLink(r.id, key)}
-🔎 验证/预览页: ${panel.fileLink(r.id)}
-⏳ ${ttlMin} 分钟内有效，过期自动删除
+${buildDownloadMsg(results)}
 📴 关闭自动下载: #X自动下载关`)
     } catch (err) {
       return e.reply(`❌ 自动下载失败：${err.message}\n可用 #X解析 查看资源直链，或 #X下载 重试`)
@@ -93,10 +118,10 @@ export class XResource extends plugin {
       const info = extractXUrl(url)
       if (info) {
         const { tweet } = await getTweet(info)
-        const pick = pickDownloadUrl(tweet)
-        if (!pick) return e.reply('❌ 该推文没有可下载的视频/图片资源')
-        dlUrl = pick.url
-        kind = pick.kind
+        const picks = pickDownloadUrls(tweet)
+        if (!picks.length) return e.reply('❌ 该推文没有可下载的视频/图片资源')
+        const results = await downloadAll(picks, cfg.panel?.maxFileMB || 500)
+        return e.reply(buildDownloadMsg(results))
       } else if (/^https?:\/\/\S+$/i.test(url)) {
         dlUrl = url
       } else {
