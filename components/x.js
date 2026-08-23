@@ -137,21 +137,65 @@ export function buildXMessage (tweet, source) {
   return lines.join('\n')
 }
 
-/** 推文渲染页模板 */
+/** 推文渲染页（仿 x.com UI） */
 export function renderTweetHtml (tweet) {
   const a = tweet.author || {}
   const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   const fmt = (n) => n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n || 0)
   const media = tweet.media || {}
-  const imgs = (media.photos || []).map(ph => `<img src="/img?u=${encodeURIComponent(ph.url)}" alt="photo" loading="lazy">`).join('')
-  const vids = (media.videos || []).map(v => `<video controls preload="metadata" src="/img?u=${encodeURIComponent(v.url)}" poster="/img?u=${encodeURIComponent(v.thumbnail_url || '')}"></video>`).join('')
-  const when = tweet.created_at ? new Date(tweet.created_at).toLocaleString('zh-CN', { hour12: false }) : ''
+  const all = media.all || []
+  const imgs = []
+  const vids = []
+  const resRows = []
+  let imgN = 0
+  let vidN = 0
+  for (const item of all) {
+    const w = item.width || 0
+    const h = item.height || 0
+    const dim = w && h ? ` ${w}x${h}` : ''
+    if (item.type === 'photo') {
+      imgN++
+      const url = item.url || ''
+      imgs.push(`<img src="/img?u=${encodeURIComponent(url)}" alt="photo ${imgN}" loading="lazy" onclick="window.open(this.src)">`)
+      resRows.push(`<div class="res-row"><span class="res-ico">🖼</span><span class="res-name">图片 ${imgN}${dim}</span><a class="res-link" href="/img?u=${encodeURIComponent(url)}" target="_blank" rel="noopener">${esc(url)}</a><button class="res-copy" data-u="${esc(url)}" onclick="cp(this)">📋 复制</button></div>`)
+    } else if (item.type === 'video' || item.type === 'gif') {
+      vidN++
+      const variants = (item.variants || []).filter(v => (v.content_type || '').includes('mp4')).sort((x, y) => (y.bitrate || 0) - (x.bitrate || 0))
+      const best = variants[0] || (item.url ? { url: item.url } : null)
+      const url = best ? best.url : ''
+      const dur = item.duration ? `${Math.floor(item.duration / 60)}:${String(Math.floor(item.duration % 60)).padStart(2, '0')}` : ''
+      const kind = item.type === 'gif' ? 'GIF' : '视频'
+      const poster = item.thumbnail_url ? ` poster="/img?u=${encodeURIComponent(item.thumbnail_url)}"` : ''
+      vids.push(item.type === 'gif'
+        ? `<video controls loop muted autoplay playsinline preload="metadata" src="/img?u=${encodeURIComponent(url)}"${poster}></video>`
+        : `<video controls preload="metadata" src="/img?u=${encodeURIComponent(url)}"${poster}></video>`)
+      resRows.push(`<div class="res-row"><span class="res-ico">${item.type === 'gif' ? '🎞' : '🎬'}</span><span class="res-name">${kind}${dur ? ` ${dur}` : ''}${dim}</span><a class="res-link" href="/img?u=${encodeURIComponent(url)}" target="_blank" rel="noopener">${esc(url)}</a><button class="res-copy" data-u="${esc(url)}" onclick="cp(this)">📋 复制</button></div>`)
+    }
+  }
+  const when = tweet.created_at
+    ? new Date(tweet.created_at).toLocaleString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+    : ''
+  const svg = {
+    reply: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8"/><path d="M12 8l-4 4 4 4"/></svg>',
+    repost: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg>',
+    like: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 21s-8-5.5-8-11a4 4 0 0 1 7-2.6A4 4 0 0 1 20 10c0 5.5-8 11-8 11z"/></svg>',
+    views: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/></svg>'
+  }
   const stats = []
-  if (tweet.views) stats.push(`👀 ${fmt(tweet.views)}`)
-  if (tweet.likes) stats.push(`👍 ${fmt(tweet.likes)}`)
-  if (tweet.retweets) stats.push(`🔁 ${fmt(tweet.retweets)}`)
-  if (tweet.replies) stats.push(`💬 ${fmt(tweet.replies)}`)
+  if (tweet.replies) stats.push(`<span class="st">${svg.reply}<span><b>${fmt(tweet.replies)}</b> 回复</span></span>`)
+  if (tweet.retweets) stats.push(`<span class="st">${svg.repost}<span><b>${fmt(tweet.retweets)}</b> 转发</span></span>`)
+  if (tweet.likes) stats.push(`<span class="st">${svg.like}<span><b>${fmt(tweet.likes)}</b> 喜欢</span></span>`)
+  if (tweet.views) stats.push(`<span class="st">${svg.views}<span><b>${fmt(tweet.views)}</b> 浏览</span></span>`)
   const avatar = a.avatar_url ? `<img class="avatar" src="/img?u=${encodeURIComponent(a.avatar_url)}" alt="">` : '<div class="avatar">🧑</div>'
-  const sens = tweet.possibly_sensitive ? '<p class="sens">⚠️ 该推文可能包含敏感内容</p>' : ''
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(a.name || '推文')} · X 解析</title><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:linear-gradient(160deg,#0f172a,#1e293b);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:20px;display:flex;justify-content:center}.card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(37,99,235,.12);padding:24px;max-width:560px;width:100%;border-top:4px solid #2563eb;margin:auto}.head{display:flex;align-items:center;gap:12px;margin-bottom:14px}.avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#eef4ff;display:flex;align-items:center;justify-content:center;font-size:22px}.name{font-size:16px;color:#1e293b;font-weight:700}.handle{font-size:13px;color:#64748b}.when{font-size:12px;color:#94a3b8;margin-top:2px}.text{font-size:15px;color:#1e293b;line-height:1.7;white-space:pre-wrap;word-break:break-word;background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:14px}.sens{color:#b45309;font-size:13px;background:#fffbeb;border-radius:8px;padding:8px 12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px}.grid img{width:100%;border-radius:10px;display:block;background:#f1f5f9}.grid video{width:100%;border-radius:10px;background:#000;max-height:70vh}.stats{display:flex;gap:16px;color:#64748b;font-size:13px;margin-bottom:14px;flex-wrap:wrap}.stats span{background:#f1f5f9;border-radius:999px;padding:4px 12px}.link{display:block;text-align:center;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;font-size:14px;border-radius:10px;padding:12px;margin-bottom:12px}.link:hover{background:#1d4ed8}.disc{font-size:11px;color:#94a3b8;text-align:center;line-height:1.7}</style></head><body><div class="card"><div class="head">${avatar}<div><p class="name">${esc(a.name || a.screen_name || '未知用户')}</p><p class="handle">@${esc(a.screen_name || '')}${when ? ' · ' + esc(when) : ''}</p></div></div>${sens}${tweet.text ? `<div class="text">${esc(tweet.text)}</div>` : ''}${imgs ? `<div class="grid">${imgs}</div>` : ''}${vids ? `<div class="grid">${vids}</div>` : ''}${stats.length ? `<div class="stats">${stats.map(s => `<span>${s}</span>`).join('')}</div>` : ''}<a class="link" href="${esc(tweet.url || '#')}" target="_blank" rel="noopener">🔗 查看原文</a><p class="disc">媒体经服务器代理加载，无法显示请开启 #X代理<br>页面 1 小时内有效</p></div></body></html>`
+  const sens = tweet.possibly_sensitive ? '<p class="sens">⚠️ 该内容可能包含敏感内容</p>' : ''
+  const textHtml = esc(tweet.text || '').replace(/(https?:\/\/[^\s<]+)/g, '<a class="tw-link" href="$1" target="_blank" rel="noopener">$1</a>')
+  const gridCls = imgs.length === 1 ? 'single' : imgs.length === 3 ? 'triple' : ''
+  const grid = (imgs.length || vids.length)
+    ? `<div class="grid ${gridCls}">${vids.join('')}${imgs.join('')}</div>`
+    : ''
+  const resBlock = resRows.length
+    ? `<div class="res"><h3>📦 资源直链 · 共 ${resRows.length} 个</h3>${resRows.join('')}<p class="res-tip">点击链接可预览/下载（经服务器代理），复制为原始直链</p></div>`
+    : ''
+  const verified = a.verified ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="#1d9bf0"><path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 2.033-1.99 2.033-3.485z"/></svg>' : ''
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9D%95%8F%3C/text%3E%3C/svg%3E"><title>${esc(a.name || '推文')} (@${esc(a.screen_name || '')}) · X 解析</title><style>:root{--bg:#fff;--text:#0f1419;--dim:#536471;--line:#eff3f4;--link:#1d9bf0;--chip:#f7f9f9;--btn:#0f1419;--btn-t:#fff}@media(prefers-color-scheme:dark){:root{--bg:#000;--text:#e7e9ea;--dim:#71767b;--line:#2f3336;--chip:#16181c;--btn:#e7e9ea;--btn-t:#000}}*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif}.wrap{max-width:600px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}.top{position:sticky;top:0;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);padding:10px 16px;font-size:17px;font-weight:700;border-bottom:1px solid var(--line);z-index:9;display:flex;align-items:center;gap:8px}@media(prefers-color-scheme:dark){.top{background:rgba(0,0,0,.85)}}.tw{display:flex;gap:12px;padding:14px 16px}.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--chip);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px}.b{flex:1;min-width:0}.uname{font-size:15px;font-weight:700;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.uhandle{font-size:14px;color:var(--dim)}.utext{font-size:17px;line-height:1.5;white-space:pre-wrap;word-break:break-word;margin:8px 0}.tw-link{color:var(--link);text-decoration:none}.tw-link:hover{text-decoration:underline}.grid{display:grid;gap:2px;border-radius:16px;overflow:hidden;margin:10px 0;grid-template-columns:repeat(2,1fr);background:var(--line)}.grid.single{grid-template-columns:1fr}.grid.triple img:first-child{grid-row:span 2}.grid img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}.grid video{grid-column:1/-1;width:100%;max-height:70vh;background:#000;display:block}.stats{display:flex;gap:22px;padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px;color:var(--dim);flex-wrap:wrap}.st{display:flex;align-items:center;gap:5px}.st b{color:var(--text);font-weight:700}.sens{margin:0 16px;color:var(--dim);font-size:13px;background:var(--chip);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:8px}.res{margin:14px 16px;background:var(--chip);border:1px solid var(--line);border-radius:16px;padding:14px}.res h3{font-size:15px;font-weight:700;margin-bottom:6px}.res-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}.res-row:last-of-type{border-bottom:none}.res-ico{font-size:15px}.res-name{font-size:13px;color:var(--dim);white-space:nowrap}.res-link{font-size:12px;color:var(--link);word-break:break-all;flex:1;min-width:120px;text-decoration:none}.res-link:hover{text-decoration:underline}.res-copy{font-size:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:999px;padding:3px 10px;cursor:pointer;white-space:nowrap}.res-copy:hover{background:var(--chip)}.res-tip{margin-top:10px;font-size:11px;color:var(--dim)}.actions{padding:12px 16px;display:flex;gap:10px}.btn{flex:1;text-align:center;background:var(--btn);color:var(--btn-t);text-decoration:none;font-weight:700;font-size:15px;border-radius:999px;padding:10px 0}.btn.blue{background:#1d9bf0;color:#fff}.btn.blue:hover{background:#1a8cd8}.disc{padding:16px;font-size:12px;color:var(--dim);text-align:center;line-height:1.7}</style></head><body><div class="wrap"><div class="top"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> 推文</div><div class="tw">${avatar}<div class="b"><p class="uname">${esc(a.name || a.screen_name || '未知用户')}${verified}<span class="uhandle">@${esc(a.screen_name || '')}</span></p>${when ? `<p class="uhandle">${esc(when)}</p>` : ''}${sens}${tweet.text ? `<p class="utext">${textHtml}</p>` : ''}${grid}${stats.length ? `<div class="stats">${stats.join('')}</div>` : ''}</div></div>${resBlock}<div class="actions"><a class="btn blue" href="${esc(tweet.url || '#')}" target="_blank" rel="noopener">在 X 上查看</a></div><p class="disc">媒体经服务器代理加载，无法显示请开启 #X代理<br>页面 1 小时内有效</p></div><script>function cp(el){var u=el.dataset.u||'';navigator.clipboard.writeText(u).then(function(){el.textContent='✅ 已复制';setTimeout(function(){el.textContent='📋 复制'},1500)}).catch(function(){prompt('复制直链：',u)})}</script></body></html>`
 }
