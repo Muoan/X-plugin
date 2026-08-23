@@ -95,8 +95,8 @@ export class XResource extends plugin {
         { reg: /^#?X搜索\s*\S+/i, fnc: 'cmdSearch' },
         { reg: /^#?X查看\s*\d+/i, fnc: 'cmdView' },
         { reg: /^#?X通知/i, fnc: 'cmdNotify' },
-        { reg: /^#?X外部代理\s*\S+/i, fnc: 'cmdExtProxy' },
-        { reg: /^#?X外部代理关/i, fnc: 'cmdExtProxyOff' }
+        { reg: /^#?X外部代理关/i, fnc: 'cmdExtProxyOff' },
+        { reg: /^#?X外部代理\s*\S+/i, fnc: 'cmdExtProxy' }
       ]
     })
   }
