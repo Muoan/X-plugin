@@ -68,7 +68,13 @@
 | 面板信息 | `#X面板` | 面板地址 + 登录 token |
 | 重置token | `#X面板重置token` | 重置面板 token（仅主人） |
 | 面板端口 | `#X面板端口+端口` | 修改面板端口并自动重启（仅主人） |
+| 设置 Cookie | `#X设置Cookie+串` | 填 X 账号 Cookie 抓取评论（仅主人） |
+| 删除 Cookie | `#X删除Cookie` | 删除 Cookie 停止抓评论（仅主人） |
 | 帮助菜单 | `#X帮助` | 图片版帮助菜单 |
+
+**💬 评论抓取说明：** 解析时若已配置 Cookie（`#X设置Cookie auth_token=xxx; ct0=yyy` 或整条 Cookie 串），渲染页自动附带评论列表；未配置则仅显示评论数量。抓取评论为非常规访问，**存在封号风险，请务必使用小号 Cookie**。Cookie 明文保存在 `data/config.json`，请勿泄露。
+
+**📁 配置文件：** `plugins/X-plugin/data/config.json`（含代理订阅/节点、面板端口/token、X Cookie 等，`data/` 不随 git 提交）；默认配置参考 `config.example.json`。
 
 </details>
 

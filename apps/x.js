@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import path from 'node:path'
-import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml } from '../components/x.js'
+import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
 import * as downloader from '../components/downloader.js'
 import * as proxy from '../components/proxy.js'
@@ -61,7 +61,9 @@ export class XResource extends plugin {
         { reg: /(?:https?:\/\/)?(?:www\.|mobile\.|m\.)?(?:x|twitter)\.com\/[A-Za-z0-9_]+\/status\/\d+/i, fnc: 'autoParse' },
         { reg: /^#?X解析\s*(?:https?:\/\/)?\S+/i, fnc: 'cmdParse' },
         { reg: /^#?X下载\s*\S+/i, fnc: 'cmdDownload' },
-        { reg: /^#?X自动下载\s*(开|关)/i, fnc: 'toggleAuto' }
+        { reg: /^#?X自动下载\s*(开|关)/i, fnc: 'toggleAuto' },
+        { reg: /^#?X设置Cookie\s*\S+/i, fnc: 'cmdSetCookie' },
+        { reg: /^#?X删除Cookie/i, fnc: 'cmdDelCookie' }
       ]
     })
   }
@@ -100,6 +102,20 @@ ${await buildDownloadMsg(results, info.url)}
     return e.reply(on ? '✅ 已开启自动下载：发 X 链接将自动下载并分享直链' : '✅ 已关闭自动下载：发 X 链接仅解析资源直链')
   }
 
+  async cmdSetCookie (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
+    const val = e.msg.replace(/^#?X设置Cookie\s*/i, '').trim()
+    if (!val) return e.reply('格式：#X设置Cookie auth_token=xxx; ct0=yyy（或整条 Cookie 串）')
+    setConfig({ x: { cookie: val } })
+    return e.reply(`✅ 已保存 X Cookie（${val.length} 字符）\n⚠️ 解析时自动抓取评论，请使用小号 Cookie，谨防封号`)
+  }
+
+  async cmdDelCookie (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
+    setConfig({ x: { cookie: '' } })
+    return e.reply('✅ 已删除 X Cookie，解析将不再抓取评论')
+  }
+
   async cmdParse (e) {
     const text = e.msg.replace(/^#?X解析\s*/i, '').trim()
     const info = extractXUrl(text)
@@ -110,8 +126,16 @@ ${await buildDownloadMsg(results, info.url)}
       // 解析走代理更稳，用完即关
       autoStarted = await downloader.ensureProxy(true, 'parse')
       const { source, tweet } = await getTweet(info)
-      const id = panel.renderPage(renderTweetHtml(tweet), info.url)
-      return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
+      // 配置了 Cookie 则附带抓取评论
+      let comments
+      const ck = getConfig().x?.cookie || ''
+      if (ck) {
+        try {
+          comments = await getComments(info.id, ck)
+        } catch { /* 评论失败不影响主流程 */ }
+      }
+      const id = panel.renderPage(renderTweetHtml(tweet, comments), info.url)
+      return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}${comments ? `，已抓取 ${comments.length} 条评论` : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
     } catch (err) {
       return e.reply(`❌ 解析失败：${err.message}`)
     } finally {

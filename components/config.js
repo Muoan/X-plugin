@@ -24,7 +24,11 @@ const DEFAULTS = {
     // 失败走代理
     useProxyFallback: true,
     // 自动下载直链
-    autoDownload: true
+    autoDownload: true,
+    // X 账号 Cookie
+    cookie: '',
+    // 评论接口 ID
+    tweetDetailQueryId: ''
   },
   panel: {
     // 面板端口

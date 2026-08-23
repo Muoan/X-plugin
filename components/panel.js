@@ -819,6 +819,11 @@ export function start () {
             subscribe_configured: !!cfg.proxy?.subscribeUrl,
             port: cfg.proxy?.port || 10890,
             node_index: cfg.proxy?.nodeIndex ?? 0
+          },
+          x: {
+            cookie: cfg.x?.cookie || '',
+            cookie_configured: !!cfg.x?.cookie,
+            auto_download: cfg.x?.autoDownload !== false
           }
         } })
       }
@@ -840,6 +845,9 @@ export function start () {
           }
           const proxyPortChanged = !!(body.proxy?.port !== undefined && Number(body.proxy.port) !== oldProxyPort)
           const portChanged = !!(body.port !== undefined && Number(body.port) !== port)
+          // X Cookie 保存/清空
+          if (body.x?.cookie !== undefined) setConfig({ x: { cookie: String(body.x.cookie) } })
+          if (body.x?.clear_cookie) setConfig({ x: { cookie: '' } })
           return json(res, 200, { ok: true, port_changed: portChanged, proxy_port_changed: proxyPortChanged })
       }
 

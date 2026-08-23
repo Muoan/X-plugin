@@ -8,12 +8,10 @@
   },
   "x": {
     "apiBase": "https://api.fxtwitter.com",
-    "useProxyFallback": true
-  },
-  "pull": {
-    "maxText": 2000,
-    "maxLinks": 15,
-    "timeout": 15000
+    "useProxyFallback": true,
+    "autoDownload": true,
+    "cookie": "auth_token=xxx; ct0=yyy",
+    "tweetDetailQueryId": ""
   },
   "panel": {
     "port": 3007,

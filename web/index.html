@@ -102,6 +102,16 @@
             <label></label>
             <button id="resetTokenBtn" class="btn ghost sm">重置令牌</button>
           </div>
+          <div class="form-row">
+            <label>X Cookie<span class="hint-inline">auth_token=xxx; ct0=yyy，用于抓取评论，建议小号</span></label>
+            <textarea id="setCookie" class="form-input" rows="2" placeholder="auth_token=xxx; ct0=yyy"></textarea>
+          </div>
+          <div class="form-row">
+            <label></label>
+            <div class="set-actions">
+              <button id="clearCookieBtn" class="btn ghost sm">清空 Cookie</button>
+            </div>
+          </div>
         </div>
 
         <button id="saveConfigBtn" class="btn primary save-config">保存面板设置</button>

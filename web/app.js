@@ -312,6 +312,9 @@ async function loadConfig () {
     $('#setCleanup').value = config.cleanup_minutes
     $('#setMaxFile').value = config.max_file_mb
     $('#tokenBox').textContent = config.token
+    if (config.x) {
+      $('#setCookie').value = config.x.cookie_configured ? config.x.cookie : ''
+    }
     loadProxyStatus()
   } catch (err) { toast(err.message, true) }
 }
@@ -458,7 +461,8 @@ $('#saveConfigBtn').addEventListener('click', async () => {
       port: Number($('#setPort').value),
       cleanup_minutes: Number($('#setCleanup').value),
       max_file_mb: Number($('#setMaxFile').value),
-      proxy: { port: Number($('#setProxyPort').value) }
+      proxy: { port: Number($('#setProxyPort').value) },
+      x: { cookie: $('#setCookie').value.trim() }
     }
     const { port_changed, proxy_port_changed } = await api('/api/config', { method: 'PUT', body })
     const notes = []
@@ -466,6 +470,15 @@ $('#saveConfigBtn').addEventListener('click', async () => {
     if (proxy_port_changed) notes.push('代理端口已保存，重启代理后生效')
     $('#configMsg').textContent = notes.length ? '已保存，' + notes.join('；') : '已保存'
     $('#appTitle').textContent = $('#setTitle').value || 'X 下载面板'
+    setTimeout(() => $('#configMsg').textContent = '', 4000)
+  } catch (err) { toast(err.message, true) }
+})
+$('#clearCookieBtn').addEventListener('click', async () => {
+  if (!confirm('清空 X Cookie？清空后解析不再抓取评论')) return
+  try {
+    $('#setCookie').value = ''
+    await api('/api/config', { method: 'PUT', body: { x: { clear_cookie: true } } })
+    $('#configMsg').textContent = '已清空 X Cookie'
     setTimeout(() => $('#configMsg').textContent = '', 4000)
   } catch (err) { toast(err.message, true) }
 })
