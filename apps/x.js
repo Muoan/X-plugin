@@ -153,7 +153,7 @@ ${await buildDownloadMsg(results, info.url)}
         } catch { /* 评论失败不影响主流程 */ }
       }
       const id = panel.renderPage(renderTweetHtml(tweet, comments), info.url)
-      return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}${comments ? `，已抓取 ${comments.length} 条评论` : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
+      return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}${comments ? `，已抓取 ${comments.length} 条评论` : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 30 分钟内有效`)
     } catch (err) {
       return e.reply(`❌ 解析失败：${err.message}`)
     } finally {

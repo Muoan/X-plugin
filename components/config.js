@@ -38,7 +38,7 @@ const DEFAULTS = {
     // 面板标题
     title: 'X 下载面板',
     // 直链有效期
-    cleanupMinutes: 60,
+    cleanupMinutes: 30,
     // 文件上限
     maxFileMB: 500,
     // 公网地址

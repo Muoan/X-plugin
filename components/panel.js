@@ -101,7 +101,7 @@ const renders = new Map()
 /** 保存渲染页 */
 export function renderPage (html, url = '') {
   const id = downloader.maId()
-  renders.set(id, { html, url, expireAt: Date.now() + 60 * 60 * 1000 })
+  renders.set(id, { html, url, expireAt: Date.now() + 30 * 60 * 1000 })
   return id
 }
 
