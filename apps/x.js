@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import path from 'node:path'
-import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments, checkCookie, fetchUser, fetchTimeline, fetchSearch, fetchNotifications, renderUserHtml, renderListHtml } from '../components/x.js'
+import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments, checkCookie, fetchUser, fetchTimeline, fetchSearch, fetchNotifications, renderUserHtml, renderListHtml, truncate } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
 import * as downloader from '../components/downloader.js'
 import * as proxy from '../components/proxy.js'
