@@ -19,6 +19,7 @@ export class XPanel extends plugin {
   }
 
   async panelStatus (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     const cfg = getConfig()
     const port = cfg.panel?.port || 3007
     const nodeCount = proxy.getNodes().length

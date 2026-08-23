@@ -23,6 +23,7 @@ export class XProxy extends plugin {
   }
 
   async proxyOn (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     try {
       const r = await proxy.startProxy()
       const n = r.node
@@ -40,11 +41,13 @@ export class XProxy extends plugin {
   }
 
   async proxyOff (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     proxy.stopProxy()
     return e.reply('🛑 代理已停止')
   }
 
   async proxyStatus (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     const s = proxy.getStatus()
     const lines = [
       `🔌 代理状态${s.running ? '：运行中 ✅' : '：未运行 ⛔'}`,
@@ -59,6 +62,7 @@ export class XProxy extends plugin {
   }
 
   async proxyTest (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     if (!proxy.getStatus().running) {
       return e.reply('❌ 代理未运行，请先 #X代理开')
     }
@@ -69,6 +73,7 @@ export class XProxy extends plugin {
   }
 
   async proxyRefresh (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     try {
       const nodes = await proxy.refreshNodes()
       return e.reply(`✅ 订阅已更新，共 ${nodes.length} 个节点\n第一条：${nodes[0]?.name || ''}`)
@@ -78,6 +83,7 @@ export class XProxy extends plugin {
   }
 
   async proxyList (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     const nodes = proxy.getNodes()
     if (!nodes.length) return e.reply('暂无节点，先 #X代理更新 拉取订阅')
     const lines = nodes.map((n, i) => `${i}. ${n.name}（${n.add}:${n.port} [${n.type}/${n.net}${n.tls ? '/tls' : ''}]）`)
@@ -85,6 +91,7 @@ export class XProxy extends plugin {
   }
 
   async proxyNode (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
     const idx = Number(e.match[1])
     const nodes = proxy.getNodes()
     if (!nodes[idx]) return e.reply(`❌ 节点 #${idx} 不存在（共 ${nodes.length} 个）`)
