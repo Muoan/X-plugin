@@ -77,6 +77,10 @@
           <h3>🔎 X 查询（需登录 Cookie）</h3>
           <p class="hint">通过登录 Cookie 抓取：用户资料、首页时间线、搜索、通知。每次约 15 秒，结果生成 30 分钟有效的渲染页。</p>
           <div class="form-row">
+            <label>搜索最多条数<span class="hint-inline">#X搜索 / 面板搜索最多返回条数（1-50）</span></label>
+            <input id="setMaxSearch" class="form-input" type="number" min="1" max="50">
+          </div>
+          <div class="form-row">
             <label>查询类型</label>
             <select id="xqType" class="form-input">
               <option value="user">👤 用户资料（输入用户名，如 hypefury）</option>
@@ -154,10 +158,6 @@
             <div class="set-actions">
               <button id="clearCookieBtn" class="btn ghost sm">清空 Cookie</button>
             </div>
-          </div>
-          <div class="form-row">
-            <label>搜索最多条数<span class="hint-inline">#X搜索 每条生成独立页面，可后台控制数量（1-50）</span></label>
-            <input id="setMaxSearch" class="form-input" type="number" min="1" max="50">
           </div>
         </div>
 
