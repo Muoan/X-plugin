@@ -24,20 +24,15 @@ async function downloadAll (picks, maxMB) {
 async function buildDownloadMsg (results, srcUrl = '') {
   const ok = results.filter(r => !r.err)
   if (results.length > 1 && ok.length) {
-    let zip = null
-    try {
-      if (ok.length >= 2) zip = await panel.zipFiles(ok.map(r => r.r.path))
-    } catch { /* zip 失败不影响 */ }
     const t = panel.addFinishedTask({
       url: srcUrl || results[0].pick.url,
       kind: ok[0].pick.kind,
       name: ok[0].pick.author || '',
       files: results.map(it => it.err
         ? { url: it.pick.url, kind: it.pick.kind, error: it.err }
-        : { url: it.pick.url, kind: it.pick.kind, file_id: it.r.id, file_name: path.basename(it.r.path), file_path: it.r.path, file_size: it.r.size }),
-      zip
+        : { url: it.pick.url, kind: it.pick.kind, file_id: it.r.id, file_name: path.basename(it.r.path), file_path: it.r.path, file_size: it.r.size })
     })
-    return `📥 已下载 ${ok.length}/${results.length} 个资源\n🔗 综合链接：${panel.shareLink(t.code)}\n打开后每个资源一个分链接，点击即下载${zip ? '，含 zip 一键下载全部' : ''}\n⏳ 链接 ${ok[0]?.ttlMin || 60} 分钟内有效，过期自动删除`
+    return `📥 已下载 ${ok.length}/${results.length} 个资源\n🔗 综合链接：${panel.shareLink(t.code)}\n打开后每个资源一个分链接，点击即下载\n⏳ 链接 ${ok[0]?.ttlMin || 60} 分钟内有效，过期自动删除`
   }
   const lines = [`📥 已下载 ${ok.length}/${results.length} 个资源`]
   results.forEach((it, i) => {

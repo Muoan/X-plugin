@@ -2,7 +2,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { execFile, spawn } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { getConfig, setConfig, DATA_DIR, PLUGIN_DIR } from './config.js'
 import { extractXUrl, getTweet, buildXMessage, formatMedia, pickDownloadUrls } from './x.js'
 import * as proxy from './proxy.js'
@@ -39,11 +39,6 @@ function makeTask (url, kind, name) {
     file_size: 0,
     file_deleted: 0,
     files: [],
-    zip_id: '',
-    zip_name: '',
-    zip_path: '',
-    zip_size: 0,
-    zip_deleted: 0,
     created_at: Date.now(),
     finished_at: 0,
     _canceled: false,
@@ -75,7 +70,7 @@ export function createTask (url, { kind, name, files } = {}) {
 }
 
 /** 已下载完成的记录（QQ 侧多资源） */
-export function addFinishedTask ({ url, kind = '资源', name = '', files = [], zip } = {}) {
+export function addFinishedTask ({ url, kind = '资源', name = '', files = [] } = {}) {
   const t = makeTask(url, kind, name)
   const total = files.reduce((s, f) => s + (f.file_size || 0), 0)
   t.files = files.map(f => ({
@@ -87,12 +82,6 @@ export function addFinishedTask ({ url, kind = '资源', name = '', files = [], 
     file_size: f.file_size || 0,
     file_deleted: 0
   }))
-  if (zip) {
-    t.zip_id = zip.id
-    t.zip_name = zip.name
-    t.zip_path = zip.path
-    t.zip_size = zip.size
-  }
   const ok = t.files.filter(f => f.file_id)
   t.file_id = ok[0]?.file_id || ''
   t.file_name = ok[0]?.file_name || ''
@@ -124,16 +113,6 @@ export function renderPage (html) {
 /** 渲染页直链 */
 export function renderLink (id) {
   return `${publicUrl()}/v/${id}`
-}
-
-/** 打 zip 合并包 */
-export async function zipFiles (filePaths) {
-  if (!filePaths.length) return null
-  const zipId = downloader.maId()
-  const zipPath = path.join(downloader.DOWNLOAD_DIR, `${zipId}.zip`)
-  await execZip(filePaths, zipPath)
-  createFileKey(zipId)
-  return { id: zipId, name: path.basename(zipPath), path: zipPath, size: fs.statSync(zipPath).size }
 }
 
 export function cancelTask (id) {
@@ -169,8 +148,6 @@ export function deleteTask (id) {
     if (f.file_path) fs.rmSync(f.file_path, { force: true })
     if (f.file_id) fileKeys.delete(String(f.file_id))
   }
-  if (t.zip_path) fs.rmSync(t.zip_path, { force: true })
-  if (t.zip_id) fileKeys.delete(String(t.zip_id))
   if (t.file_id) fileKeys.delete(String(t.file_id))
   tasks.delete(String(id))
   return true
@@ -245,13 +222,6 @@ async function runTask (t) {
   }
 }
 
-/** zip 打包 */
-function execZip (files, outPath) {
-  return new Promise((res, rej) => {
-    execFile('zip', ['-j', '-q', outPath, ...files], (err) => err ? rej(err) : res())
-  })
-}
-
 /** 多资源任务 */
 async function runMultiTask (t, picks, maxMB) {
   const files = []
@@ -294,20 +264,6 @@ async function runMultiTask (t, picks, maxMB) {
     t.error = '全部资源下载失败'
     t.finished_at = Date.now()
     return
-  }
-  if (ok.length >= 2) {
-    try {
-      const zipId = downloader.maId()
-      const zipPath = path.join(downloader.DOWNLOAD_DIR, `${zipId}.zip`)
-      await execZip(ok.map(f => f.file_path), zipPath)
-      createFileKey(zipId)
-      t.zip_id = zipId
-      t.zip_name = path.basename(zipPath)
-      t.zip_path = zipPath
-      t.zip_size = fs.statSync(zipPath).size
-    } catch (err) {
-      t.zip_error = err?.message || String(err)
-    }
   }
   t.file_id = ok[0].file_id
   t.file_name = ok[0].file_name
@@ -465,12 +421,7 @@ function sharePage (t) {
     const pv = downloader.canPreview(path.extname(f.file_name || '')) ? `<a class="btn ghost" href="${dl}&inline=1">👁 预览</a>` : ''
     return `<div class="row"><span class="idx">${i + 1}️⃣</span><div class="info"><p class="nm">${esc(f.file_name || '资源')}</p><p class="meta">${esc(f.kind || '')} · ${fmtSize(f.file_size)}</p></div>${pv}<a class="btn" href="${dl}">⬇ 下载</a></div>`
   }).join('')
-  let zipRow = ''
-  if (t.zip_id && t.zip_deleted !== 1) {
-    const rec = createFileKey(t.zip_id)
-    zipRow = `<div class="row zip"><span class="idx">📦</span><div class="info"><p class="nm">${esc(t.zip_name || '全部资源.zip')}</p><p class="meta">合并包 · ${fmtSize(t.zip_size)}</p></div><a class="btn primary" href="${downloadLink(t.zip_id, rec.key)}">⬇ 下载全部</a></div>`
-  }
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>X 资源分享</title><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:linear-gradient(160deg,#0f172a,#1e293b);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:20px;display:flex;justify-content:center}.card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(37,99,235,.12);padding:24px;max-width:520px;width:100%;border-top:4px solid #2563eb;margin:auto}.hd{display:flex;align-items:center;gap:10px;margin-bottom:4px}.hd h1{font-size:19px;color:#1e3a8a;font-weight:700}.sub{font-size:13px;color:#64748b;margin-bottom:18px}.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9}.row:last-child{border-bottom:none}.idx{font-size:16px;width:26px;text-align:center;flex-shrink:0}.info{flex:1;min-width:0}.nm{font-size:15px;color:#1e293b;font-weight:600;word-break:break-all}.meta{font-size:12px;color:#94a3b8;margin-top:2px}.meta.err{color:#dc2626}.btn{display:inline-block;padding:9px 16px;border-radius:9px;font-size:13px;text-decoration:none;font-weight:600;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;white-space:nowrap}.btn.ghost{background:#fff;color:#2563eb}.btn.primary{background:#2563eb;color:#fff;border-color:#2563eb}.btn.primary:hover{background:#1d4ed8}.row.zip{background:#eff6ff;border-radius:10px;padding:12px;border:none;margin-top:12px}.disc{margin-top:16px;font-size:11px;color:#94a3b8;line-height:1.7;text-align:center}</style></head><body><div class="card"><div class="hd"><h1>📥 X 资源分享</h1></div><p class="sub">${esc(t.kind || '资源')}${t.title ? ' · ' + esc(t.title) : ''}</p>${rows}${zipRow}<p class="disc">共 ${(t.files || []).length} 个资源，链接 ${ttlMin} 分钟内有效<br>手机端请使用浏览器打开下载</p></div></body></html>`
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>X 资源分享</title><style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:linear-gradient(160deg,#0f172a,#1e293b);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;padding:20px;display:flex;justify-content:center}.card{background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(37,99,235,.12);padding:24px;max-width:520px;width:100%;border-top:4px solid #2563eb;margin:auto}.hd{display:flex;align-items:center;gap:10px;margin-bottom:4px}.hd h1{font-size:19px;color:#1e3a8a;font-weight:700}.sub{font-size:13px;color:#64748b;margin-bottom:18px}.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9}.row:last-child{border-bottom:none}.idx{font-size:16px;width:26px;text-align:center;flex-shrink:0}.info{flex:1;min-width:0}.nm{font-size:15px;color:#1e293b;font-weight:600;word-break:break-all}.meta{font-size:12px;color:#94a3b8;margin-top:2px}.meta.err{color:#dc2626}.btn{display:inline-block;padding:9px 16px;border-radius:9px;font-size:13px;text-decoration:none;font-weight:600;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;white-space:nowrap}.btn.ghost{background:#fff;color:#2563eb}.disc{margin-top:16px;font-size:11px;color:#94a3b8;line-height:1.7;text-align:center}</style></head><body><div class="card"><div class="hd"><h1>📥 X 资源分享</h1></div><p class="sub">${esc(t.kind || '资源')}${t.title ? ' · ' + esc(t.title) : ''}</p>${rows}<p class="disc">共 ${(t.files || []).length} 个资源，链接 ${ttlMin} 分钟内有效<br>手机端请使用浏览器打开下载</p></div></body></html>`
 }
 
 /** 分享失效页 */
@@ -493,7 +444,7 @@ function sendText (res, status, text) {
 const MIME = {
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.m4v': 'video/mp4',
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp',
-  '.mp3': 'audio/mpeg', '.zip': 'application/zip'
+  '.mp3': 'audio/mpeg'
 }
 
 /** 按 id 查文件 */

@@ -126,10 +126,6 @@ function renderTasks () {
           `<button class="btn sm" onclick="previewFile('${f.file_id}')">👁</button></div>`
       }).join('')
       : ''
-    const zipRow = (multi && t.status === 'done' && t.zip_id && t.zip_deleted !== 1)
-      ? `<div class="file-row zip">📦 ${esc(t.zip_name)} <span class="fs">${fmtSize(t.zip_size)}</span>` +
-        `<button class="btn sm primary" onclick="downloadFile('${t.zip_id}')">⬇ 下载全部</button></div>`
-      : ''
     return `<div class="task-card" data-id="${t.id}">
       <div class="task-head">
         <span class="task-id">#${esc(t.code || t.id)}</span>
@@ -148,7 +144,6 @@ function renderTasks () {
       </div>
       ${t.error ? `<div class="task-err">${esc(t.error)}</div>` : ''}
       ${fileRows}
-      ${zipRow}
       <div class="task-actions">
         ${t.status === 'done' && (t.files || []).some(f => f.file_id) ? `<button class="btn sm" onclick="copyShare('${esc(t.code || '')}')">🔗 分享</button>` : ''}
         ${canDl && !multi ? `<button class="btn sm" onclick="downloadFile('${t.file_id}')">⬇ 下载文件</button>` : ''}
