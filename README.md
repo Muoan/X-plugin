@@ -1,0 +1,98 @@
+# 🐦X-plugin 插件说明
+
+****
+## 😍插件介绍：
+**X/Twitter 推文视频/图片/GIF 解析下载插件：发链接自动解析、下载到服务器生成直链分享、内置订阅代理（v2ray）、网页拉取（类 MApull）**
+
+**本插件拒绝任何【非合理】提议~如遇到问题请卸载本插件或截图＋文字叙述提交issues或加入QQ群或Yunzai论坛反馈即可~**
+
+**如您要参与项目请Pull提交欢迎共同参与此项目！**
+
+****
+
+# 😒安装插件：
+<details>
+  <summary>展开/收起</summary>
+
+**1.github：**
+
+`git clone --depth=1 https://github.com/Muoan/X-plugin.git ./plugins/X-plugin/`
+
+****
+
+**2.gitee：**
+
+`git clone --depth=1 https://gitee.com/muoan/X-plugin.git ./plugins/X-plugin/`
+
+****
+
+**3.gitcode：**
+
+`git clone --depth=1 https://gitcode.com/muoan/X-plugin.git ./plugins/X-plugin/`
+
+或手动将 X-plugin 文件夹放入 `./plugins/` 目录下，重启云崽即可
+
+</details>
+
+****
+# 😁安装依赖：
+<details>
+<summary>展开/收起</summary>
+
+`pnpm i`
+
+`pnpm install --filter=X-plugin`
+
+</details>
+
+****
+# 😘功能介绍
+<details>
+<summary>展开/收起</summary>
+
+| 功能名称 | 功能命令 | 功能讲解 |
+| ---- | ---- | ---- |
+| 自动解析 | 直接发 X/Twitter 链接 | 自动解析推文视频/图片/GIF，资源以直链发送 |
+| 自动下载 | 直接发 X/Twitter 链接 | 自动下载到服务器并分享直链（`#X自动下载 开/关` 控制） |
+| 手动解析 | `#X解析+链接` | 解析推文资源（视频/图片/GIF） |
+| 下载直链 | `#X下载+链接` | 下载到服务器，生成带 key 直链（默认 60 分钟有效） |
+| 网页拉取 | `#X拉取+网址` / `#拉取网页+网址` | 拉取网页标题/描述 + 媒体资源直链 |
+| 代理开关 | `#X代理开` / `#X代理关` | 启动/停止订阅代理（v2ray socks5:10890） |
+| 代理状态 | `#X代理状态` | 代理运行状态 + 当前节点 |
+| 代理测试 | `#X代理测试` | 当前节点连通测试 |
+| 节点切换 | `#X代理节点+序号` | 切换订阅节点并启动 |
+| 节点列表 | `#X代理列表` | 查看订阅节点列表 |
+| 更新订阅 | `#X代理更新` | 重新拉取订阅 |
+| 设置订阅 | `#X代理设置订阅+链接` | 设置订阅链接（仅主人） |
+| 面板信息 | `#X面板` | 面板地址 + 登录 token |
+| 重置token | `#X面板重置token` | 重置面板 token（仅主人） |
+| 面板端口 | `#X面板端口+端口` | 修改面板端口并自动重启（仅主人） |
+| 帮助菜单 | `#X帮助` | 图片版帮助菜单 |
+
+</details>
+
+# 😂更新：
+**在插件目录执行 `git pull` 即可**
+
+**PS：遇到无法更新或错误提示请检查网络（github 直连被掐时可用 ghfast 代理）**
+
+****
+# 😜交流：
+**QQ群：[872488071](https://qm.qq.com/q/SA5dEJf6MM)**
+
+**云崽论坛：[Yunzai论坛/文档](https://yzai.top)**
+
+# 😊友情链接：
+[Miao-Yunzai](https://gitee.com/yoimiya-kokomi/Miao-Yunzai)😠
+[TRSS-Yunzai](https://gitee.com/TimeRainStarSky/Yunzai)
+
+**Web 面板参考：[MApull-Plugin](https://github.com/Muoan/MApull-Plugin)**
+
+****
+# 😍其他：
+
+**素材来源于网络，仅供交流学习使用，严禁用于商业和非法用途**
+
+**Web 面板：浏览器打开 `http://服务器IP:3007`，输入 token 登录，可管理任务/文件/代理（节点切换/全节点测速/订阅设置）**
+
+**资源直链（video.twimg.com / pbs.twimg.com 等）国内直连可能打不开，请开启代理或使用下载直链**

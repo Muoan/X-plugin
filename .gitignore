@@ -1,0 +1,6 @@
+# 运行时数据（含订阅 token，切勿提交）
+data/
+
+node_modules/
+*.log
+.DS_Store

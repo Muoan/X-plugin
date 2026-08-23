@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X 下载面板</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div id="loginView" class="login-wrap hidden">
+  <div class="login-card">
+    <div class="logo">📥</div>
+    <h1 id="loginTitle">X 下载面板</h1>
+    <p class="sub">输入面板 token 登录</p>
+    <input id="tokenInput" type="password" placeholder="token" autocomplete="off">
+    <button id="loginBtn" class="btn primary">登 录</button>
+    <p id="loginError" class="error"></p>
+    <p class="disclaimer">本页仅提供拉取下载与短期预览，对内容不做审查，不记录使用者信息，如有问题概不负责</p>
+  </div>
+</div>
+
+<div id="mainView" class="hidden">
+  <header>
+    <div class="brand"><span class="logo-sm">📥</span><span id="appTitle">X 下载面板</span></div>
+    <div class="header-right">
+      <span id="proxyBadge" class="proxy-badge stopped" title="点击前往设置">● 代理未启动</span>
+      <button id="logoutBtn" class="btn ghost sm">退出</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="tasks">任务</button>
+    <button class="tab" data-tab="files">文件</button>
+    <button class="tab" data-tab="settings">设置</button>
+  </nav>
+
+  <main>
+
+    <section id="tab-tasks" class="panel">
+      <div class="new-task">
+        <input id="urlInput" type="text" placeholder="粘贴 X 推文链接 / 视频 / 图片直链" autocomplete="off">
+        <button id="addTaskBtn" class="btn primary">开始下载</button>
+      </div>
+      <div class="hint">支持：X/Twitter 推文链接（自动解析主视频/图片并下载）、视频/图片直链。video.twimg.com 等被墙域名自动走代理下载。</div>
+      <div id="taskList" class="task-list"></div>
+    </section>
+
+    <section id="tab-files" class="panel hidden">
+      <div class="file-toolbar">
+        <span>已完成文件</span>
+        <button id="refreshFilesBtn" class="btn ghost sm">刷新</button>
+      </div>
+      <table class="file-table">
+        <thead><tr><th>#</th><th>文件名</th><th>大小</th><th>来源</th><th>操作</th></tr></thead>
+        <tbody id="fileBody"></tbody>
+      </table>
+    </section>
+
+    <section id="tab-settings" class="panel hidden">
+      <div class="settings-form">
+        <div class="set-card">
+          <div class="set-card-head">🖥 面板</div>
+          <div class="set-row">
+            <div class="set-label"><span>面板标题</span><small>浏览器标签页显示的名称</small></div>
+            <input id="setTitle" type="text">
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>面板端口</span><small>修改后需重启云崽生效</small></div>
+            <input id="setPort" type="number" min="1000" max="65535">
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>自动清理（分钟）</span><small>直链过期后自动删除文件</small></div>
+            <input id="setCleanup" type="number" min="1" max="1440">
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>单文件大小上限（MB）</span><small>超过上限将拒绝下载</small></div>
+            <input id="setMaxFile" type="number" min="1" max="2048">
+          </div>
+        </div>
+
+        <div class="set-card">
+          <div class="set-card-head">🌐 代理</div>
+          <div id="proxyStatus" class="proxy-status"></div>
+          <div class="set-row">
+            <div class="set-label"><span>订阅链接</span><small>V2Board 订阅地址，保存后刷新节点</small></div>
+            <input id="setSubscribe" type="text" placeholder="V2Board 订阅地址">
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>代理端口</span><small>socks5 监听端口，需重启代理生效</small></div>
+            <input id="setProxyPort" type="number" min="1024" max="65535">
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>当前节点</span><small>选择后点击「切换节点并启动」生效</small></div>
+            <select id="setNode"></select>
+          </div>
+          <div class="set-actions">
+            <button id="saveSubscribeBtn" class="btn sm">保存订阅</button>
+            <button id="refreshNodesBtn" class="btn sm">刷新节点</button>
+            <button id="proxyStartBtn" class="btn sm">启动代理</button>
+            <button id="proxyStopBtn" class="btn sm">停止代理</button>
+            <button id="proxyTestBtn" class="btn sm">连通测试</button>
+            <button id="proxySwitchBtn" class="btn sm primary">切换节点并启动</button>
+            <button id="speedtestBtn" class="btn sm primary">⏱ 全节点测速</button>
+          </div>
+          <div class="speedtest-wrap">
+            <p id="speedtestMsg" class="sp-testing hidden"></p>
+            <div id="speedtestResult" class="speedtest-result hidden"></div>
+          </div>
+          <p id="proxyMsg" class="success"></p>
+        </div>
+
+        <div class="set-card">
+          <div class="set-card-head">🔑 安全</div>
+          <div class="set-row">
+            <div class="set-label"><span>访问令牌</span><small>面板登录凭证，重置后旧令牌立即失效</small></div>
+            <div class="set-token">
+              <div class="token-box" id="tokenBox"></div>
+              <button id="resetTokenBtn" class="btn ghost sm">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="saveConfigBtn" class="btn primary save-config">保存面板设置</button>
+        <p id="configMsg" class="success"></p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<div id="previewModal" class="modal hidden">
+  <div class="modal-mask" onclick="closePreview()"></div>
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="modal-title" id="previewTitle">预览</span>
+      <button class="btn ghost sm" onclick="closePreview()">✕ 关闭</button>
+    </div>
+    <div class="modal-body" id="previewBody"></div>
+    <p class="disclaimer modal-note">本页仅提供拉取下载与短期预览，对内容不做审查，不记录使用者信息，如有问题概不负责</p>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

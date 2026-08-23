@@ -1,0 +1,22 @@
+{
+  "proxy": {
+    "subscribeUrl": "https://你的订阅地址/api/v1/client/subscribe?token=你的token",
+    "port": 10890,
+    "enabled": false,
+    "nodeIndex": 0,
+    "testUrl": "https://www.gstatic.com/generate_204"
+  },
+  "x": {
+    "apiBase": "https://api.fxtwitter.com",
+    "useProxyFallback": true
+  },
+  "pull": {
+    "maxText": 2000,
+    "maxLinks": 15,
+    "timeout": 15000
+  },
+  "panel": {
+    "port": 3007,
+    "token": ""
+  }
+}
