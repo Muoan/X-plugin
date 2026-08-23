@@ -187,8 +187,17 @@
             <input id="setProxyPort" class="form-input" type="number" min="1024" max="65535">
           </div>
           <div class="form-row">
-            <label>外部代理<span class="hint-inline">已有代理时填地址直接走它（如 socks5://127.0.0.1:7891 或 http://127.0.0.1:7890），留空 = 用内置 v2ray 订阅</span></label>
+            <label>外部代理<span class="hint-inline">已有代理时填地址直接走它，留空 = 用内置 v2ray 订阅</span></label>
             <input id="setExtProxy" class="form-input" type="text" placeholder="socks5://127.0.0.1:7891">
+            <details class="cookie-help">
+              <summary>💡 怎么填？Windows / Linux 示例</summary>
+              <ol>
+                <li><b>Clash 系（Win/Mac/Linux 通用）：</b>保持 Clash 运行 → 填 <code>http://127.0.0.1:7890</code>（混合端口，推荐）或 <code>socks5://127.0.0.1:7891</code></li>
+                <li><b>v2rayN：</b>填 <code>http://127.0.0.1:10809</code>（或设置里的 socks 端口）</li>
+                <li><b>仅开系统代理不够：</b>curl / Node 抓取不认系统代理，必须填这里显式指定；填了外部代理就不会再启动内置 v2ray</li>
+                <li><b>本机已有代理服务（如 127.0.0.1:7891）：</b>直接填对应地址即可；地址需要能访问 x.com</li>
+              </ol>
+            </details>
           </div>
           <div class="form-row">
             <label></label>
