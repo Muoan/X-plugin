@@ -32,6 +32,7 @@
   <nav class="tabs">
     <button class="tab active" data-tab="tasks">📥 任务</button>
     <button class="tab" data-tab="files">📁 文件</button>
+    <button class="tab" data-tab="shares">🔗 分享</button>
     <button class="tab" data-tab="proxy">🌐 代理</button>
     <button class="tab" data-tab="settings">⚙️ 设置</button>
   </nav>
@@ -56,6 +57,17 @@
         <thead><tr><th>#</th><th>文件名</th><th>大小</th><th>来源</th><th>操作</th></tr></thead>
         <tbody id="fileBody"></tbody>
       </table>
+    </section>
+
+    <section id="tab-shares" class="panel hidden">
+      <div class="file-toolbar">
+        <span>分享链接管理</span>
+        <div>
+          <button id="refreshSharesBtn" class="btn ghost sm">刷新</button>
+          <button id="clearSharesBtn" class="btn danger sm">🗑 清理全部分享记录</button>
+        </div>
+      </div>
+      <div id="shareList" class="task-list"></div>
     </section>
 
     <section id="tab-settings" class="panel hidden">

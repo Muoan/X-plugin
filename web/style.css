@@ -98,6 +98,18 @@ main { padding: 18px 22px 40px; max-width: 1100px; margin: 0 auto; }
 }
 
 .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 22px; z-index: 99; box-shadow: 0 8px 30px rgba(43,109,232,.15); color: var(--text); }
+
+/* 分享管理卡片 */
+.share-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(43,109,232,.05); }
+.share-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.share-type { font-size: 11px; color: #fff; background: #2563eb; border-radius: 6px; padding: 2px 8px; }
+.share-exp { font-size: 12px; }
+.share-link { display: block; font-size: 14px; color: #2563eb; font-weight: 600; word-break: break-all; text-decoration: none; margin-bottom: 4px; }
+.share-link:hover { text-decoration: underline; }
+.share-src { font-size: 12px; color: var(--dim); word-break: break-all; margin-bottom: 8px; }
+.share-src a { color: var(--dim); text-decoration: none; }
+.share-src a:hover { color: #2563eb; text-decoration: underline; }
+.share-actions { display: flex; gap: 8px; }
 .toast.err { border-color: var(--err); color: var(--err); }
 
 .modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }

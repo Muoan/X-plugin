@@ -110,7 +110,7 @@ ${await buildDownloadMsg(results, info.url)}
       // 解析走代理更稳，用完即关
       autoStarted = await downloader.ensureProxy(true, 'parse')
       const { source, tweet } = await getTweet(info)
-      const id = panel.renderPage(renderTweetHtml(tweet))
+      const id = panel.renderPage(renderTweetHtml(tweet), info.url)
       return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
     } catch (err) {
       return e.reply(`❌ 解析失败：${err.message}`)

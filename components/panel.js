@@ -99,9 +99,9 @@ export function shareLink (code) {
 const renders = new Map()
 
 /** 保存渲染页 */
-export function renderPage (html) {
+export function renderPage (html, url = '') {
   const id = downloader.maId()
-  renders.set(id, { html, expireAt: Date.now() + 60 * 60 * 1000 })
+  renders.set(id, { html, url, expireAt: Date.now() + 60 * 60 * 1000 })
   return id
 }
 
@@ -154,6 +154,60 @@ export function clearTasks () {
       deleteTask(id)
     }
   }
+}
+
+/** 分享链接列表 */
+export function getShares () {
+  const list = []
+  const ttlMin = getConfig().panel?.cleanupMinutes || 60
+  for (const [id, t] of tasks) {
+    if (t.status !== 'done') continue
+    list.push({
+      code: t.code,
+      type: '分享',
+      link: shareLink(t.code),
+      url: t.url || '',
+      expireAt: t.finished_at ? t.finished_at + ttlMin * 60 * 1000 : 0,
+      fileCount: (t.files || []).length,
+      size: t.total_size || 0
+    })
+  }
+  for (const [id, rec] of renders) {
+    list.push({
+      code: id,
+      type: '解析',
+      link: renderLink(id),
+      url: rec.url || '',
+      expireAt: rec.expireAt,
+      fileCount: 0,
+      size: 0
+    })
+  }
+  return list.sort((a, b) => b.expireAt - a.expireAt)
+}
+
+/** 作废分享链接 */
+export function revokeShare (code) {
+  let hit = false
+  for (const [id, t] of tasks) {
+    if (t.code === code) {
+      deleteTask(id)
+      hit = true
+    }
+  }
+  if (renders.has(code)) {
+    renders.delete(code)
+    hit = true
+  }
+  return hit
+}
+
+/** 清理全部分享记录 */
+export function clearShares () {
+  const n = tasks.size + renders.size
+  clearTasks()
+  renders.clear()
+  return n
 }
 
 function kickTaskWorker () {
@@ -707,6 +761,20 @@ export function start () {
       if (req.method === 'POST' && p === '/api/tasks/clear') {
         clearTasks()
         return json(res, 200, { ok: true })
+      }
+
+      // 分享管理
+      if (req.method === 'GET' && p === '/api/shares') {
+        return json(res, 200, { list: getShares() })
+      }
+      if (req.method === 'POST' && p === '/api/shares/clear') {
+        const n = clearShares()
+        return json(res, 200, { ok: true, cleared: n })
+      }
+      const shareOpMatch = p.match(/^\/api\/shares\/(ma-[0-9a-f]+)\/revoke$/)
+      if (req.method === 'POST' && shareOpMatch) {
+        const ok = revokeShare(shareOpMatch[1])
+        return json(res, ok ? 200 : 400, ok ? { ok: true } : { error: '分享不存在或已过期' })
       }
 
       // 任务操作

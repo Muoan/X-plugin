@@ -85,6 +85,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'))
     $('#tab-' + tab.dataset.tab).classList.remove('hidden')
     if (tab.dataset.tab === 'files') loadFiles()
+    if (tab.dataset.tab === 'shares') loadShares()
     if (tab.dataset.tab === 'settings') loadConfig()
     if (tab.dataset.tab === 'proxy') loadProxyTab()
   })
@@ -219,6 +220,68 @@ async function copyShare (code) {
   }
 }
 
+// ── 分享管理 ──
+let SHARES = []
+
+async function loadShares () {
+  try {
+    const data = await api('/api/shares')
+    SHARES = data.list || []
+    renderShares()
+  } catch (err) { /* 静默 */ }
+}
+
+function fmtExpire (ts) {
+  if (!ts) return '无期限'
+  const left = ts - Date.now()
+  if (left <= 0) return '已过期'
+  const m = Math.ceil(left / 60000)
+  return m >= 60 ? `${Math.floor(m / 60)} 小时后过期` : `${m} 分钟后过期`
+}
+
+function renderShares () {
+  const list = $('#shareList')
+  if (!SHARES.length) {
+    list.innerHTML = '<div class="empty">暂无分享链接，下载或解析后自动生成</div>'
+    return
+  }
+  list.innerHTML = SHARES.map(s => `
+    <div class="share-card">
+      <div class="share-head">
+        <span class="share-type">${esc(s.type)}</span>
+        <span class="fs share-exp">${fmtExpire(s.expireAt)}</span>
+      </div>
+      <a class="share-link" href="${esc(s.link)}" target="_blank" rel="noopener">${esc(s.link.replace(/^https?:\/\//, ''))}</a>
+      <div class="share-src">📄 原文：${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>` : '—'}</div>
+      <div class="share-actions">
+        <button class="btn sm" onclick="copyShare('${esc(s.code)}')">📋 复制</button>
+        <button class="btn danger sm" onclick="revokeShare('${esc(s.code)}')">⭕ 立即作废</button>
+      </div>
+    </div>`).join('')
+}
+
+async function revokeShare (code) {
+  if (!confirm('确定作废该分享链接？作废后立即无法访问')) return
+  try {
+    await api('/api/shares/' + code + '/revoke', { method: 'POST' })
+    toast('✅ 已作废：' + code)
+    loadShares()
+  } catch (err) {
+    toast('❌ ' + (err.message || '作废失败'))
+  }
+}
+
+async function clearAllShares () {
+  if (!confirm('确定清理全部分享记录？任务与文件将一并删除')) return
+  try {
+    const data = await api('/api/shares/clear', { method: 'POST' })
+    toast('✅ 已清理 ' + (data.cleared || 0) + ' 条分享记录')
+    loadShares()
+  } catch (err) {
+    toast('❌ ' + (err.message || '清理失败'))
+  }
+}
+
 async function loadFiles () {
   try {
     const data = await api('/api/files')
@@ -238,6 +301,8 @@ async function loadFiles () {
   } catch (err) { toast(err.message, true) }
 }
 $('#refreshFilesBtn').addEventListener('click', loadFiles)
+$('#refreshSharesBtn').addEventListener('click', loadShares)
+$('#clearSharesBtn').addEventListener('click', clearAllShares)
 
 async function loadConfig () {
   try {
