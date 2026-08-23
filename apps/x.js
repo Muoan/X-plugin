@@ -24,22 +24,22 @@ async function downloadAll (picks, maxMB) {
 /** 拼下载结果文案 */
 async function buildDownloadMsg (results, srcUrl = '') {
   const ok = results.filter(r => !r.err)
-  if (results.length > 1 && ok.length) {
-    const t = panel.addFinishedTask({
-      url: srcUrl || results[0].pick.url,
-      kind: ok[0].pick.kind,
-      name: ok[0].pick.author || '',
-      files: results.map(it => it.err
-        ? { url: it.pick.url, kind: it.pick.kind, error: it.err }
-        : { url: it.pick.url, kind: it.pick.kind, file_id: it.r.id, file_name: path.basename(it.r.path), file_path: it.r.path, file_size: it.r.size })
-    })
+  // 统一记录任务（web 任务列表可见，含失败项）
+  const t = panel.addFinishedTask({
+    url: srcUrl || results[0]?.pick?.url || '',
+    kind: ok[0]?.pick?.kind || results[0]?.pick?.kind || '资源',
+    name: ok[0]?.pick?.author || results[0]?.pick?.author || '',
+    files: results.map(it => it.err
+      ? { url: it.pick?.url || '', kind: it.pick?.kind || '资源', error: it.err }
+      : { url: it.pick?.url || '', kind: it.pick?.kind || '资源', file_id: it.r.id, file_name: path.basename(it.r.path), file_path: it.r.path, file_size: it.r.size })
+  })
+  if (results.length > 1) {
     return `📥 已下载 ${ok.length}/${results.length} 个资源\n🔗 综合链接：${panel.shareLink(t.code)}\n打开后每个资源一个分链接，点击即下载\n⏳ 链接 ${ok[0]?.ttlMin || 60} 分钟内有效，过期自动删除`
   }
+  const it = results[0]
   const lines = [`📥 已下载 ${ok.length}/${results.length} 个资源`]
-  results.forEach((it, i) => {
-    if (it.err) lines.push(`${i + 1}️⃣ ${it.pick.kind} 失败：${it.err}`)
-    else lines.push(`${i + 1}️⃣ ${it.pick.kind}（${fmtSize(it.r.size)}）\n🔗 ${panel.downloadLink(it.r.id, it.key)}`)
-  })
+  if (it?.err) lines.push(`1️⃣ ${it.pick?.kind || '资源'} 失败：${it.err}`)
+  else if (it?.r) lines.push(`1️⃣ ${it.pick?.kind || '资源'}（${fmtSize(it.r.size)}）\n🔗 ${panel.downloadLink(it.r.id, it.key)}`)
   lines.push(`⏳ 直链 ${ok[0]?.ttlMin || 60} 分钟内有效，过期自动删除`)
   return lines.join('\n')
 }
@@ -90,15 +90,20 @@ export class XResource extends plugin {
     if (!info) return true
     try {
       const { source, tweet } = await getTweet(info)
-      const base = buildXMessage(tweet, source)
+      const a = tweet.author || {}
+      // 精简摘要，不铺资源列表（多清晰度/封面走页面选择）
+      const base = `📱 X 资源解析${source === 'proxy' ? '（经代理）' : ''}\n👤 ${a.name || a.screen_name || '未知用户'}${a.screen_name ? ` @${a.screen_name}` : ''}\n📝 ${truncate(tweet.text, 120)}`
       const picks = pickDownloadUrls(tweet)
-      if (!picks.length) return e.reply(base)
+      if (!picks.length) return e.reply(buildXMessage(tweet, source))
       const results = await downloadAll(picks, cfg.panel?.maxFileMB || 500)
-      return e.reply(`${base}
-
-━━━━━━━━━━━━
-${await buildDownloadMsg(results, info.url)}
-📴 关闭自动下载: #X自动下载关`)
+      const okN = results.filter(r => !r.err).length
+      const msg = await buildDownloadMsg(results, info.url)
+      if (okN === results.length) {
+        return e.reply(`${base}\n\n${msg}\n📴 关闭自动下载: #X自动下载关`)
+      }
+      // 有失败：附渲染选择页（含全部清晰度/封面，点开选）
+      const id = panel.renderPage(renderTweetHtml(tweet), info.url)
+      return e.reply(`${base}\n\n${msg}\n🔗 选择页（含全部清晰度）: ${panel.renderLink(id)}\n📴 关闭自动下载: #X自动下载关`)
     } catch (err) {
       return e.reply(`❌ 自动下载失败：${err.message}\n可用 #X解析 查看资源直链，或 #X下载 重试`)
     }
@@ -306,6 +311,13 @@ ${await buildDownloadMsg(results, info.url)}
 
       const r = await downloader.downloadFile(dlUrl, { maxMB: cfg.panel?.maxFileMB || 500 })
       const { key, ttlMin } = panel.createFileKey(r.id)
+      // 记录任务（web 任务列表可见）
+      panel.addFinishedTask({
+        url: dlUrl,
+        kind,
+        name: path.basename(r.path),
+        files: [{ url: dlUrl, kind, file_id: r.id, file_name: path.basename(r.path), file_path: r.path, file_size: r.size }]
+      })
       const lines = [
         `📥 ${kind}下载完成`,
         `📄 文件名: ${path.basename(r.path)}`,
