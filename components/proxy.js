@@ -12,6 +12,15 @@ let child = null
 let nodes = []
 let currentNode = null
 let lastError = ''
+/** 本次启动者（'download'|'parse'|'media'，空=用户手动） */
+let startedBy = ''
+/** 媒体代理最近活跃时间 */
+let mediaTs = 0
+
+// 媒体代理空闲 5 分钟自动关
+setInterval(() => {
+  if (startedBy === 'media' && mediaTs && Date.now() - mediaTs > 5 * 60 * 1000) stopProxy('media')
+}, 30000)
 
 /** 订阅解析 */
 
@@ -251,10 +260,13 @@ export function nextNode () {
 }
 
 /** 启动代理 */
-export async function startProxy ({ nodeIndex, skipTest } = {}) {
+export async function startProxy ({ nodeIndex, skipTest, owner = '' } = {}) {
+  // 已在跑：自动场景直接复用，不动启动者
+  if (child && owner) return { node: currentNode, ok: true }
   const cfg = getConfig()
   killStale()
   if (child) stopProxy()
+  startedBy = owner
   if (!getNodes().length) await refreshNodes()
   const list = getNodes()
   const idx = nodeIndex ?? cfg.proxy.nodeIndex ?? 0
@@ -291,7 +303,9 @@ export async function startProxy ({ nodeIndex, skipTest } = {}) {
   return { node, ok, error }
 }
 
-export function stopProxy () {
+export function stopProxy (owner = '') {
+  // 只允许关自己启动的（手动开的任何 owner 关不掉）
+  if (owner && startedBy !== owner) return false
   if (child) {
     const proc = child
     child = null
@@ -305,7 +319,14 @@ export function stopProxy () {
     try { proc.removeAllListeners() } catch { /* ignore */ }
   }
   currentNode = null
+  startedBy = ''
   try { setConfig({ proxy: { enabled: false } }) } catch { /* ignore */ }
+  return true
+}
+
+/** 媒体代理活跃标记 */
+export function touchMedia () {
+  mediaTs = Date.now()
 }
 
 /** 测试连通性 */

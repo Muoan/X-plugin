@@ -3,6 +3,7 @@ import path from 'node:path'
 import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
 import * as downloader from '../components/downloader.js'
+import * as proxy from '../components/proxy.js'
 import * as panel from '../components/panel.js'
 
 /** 批量下载 */
@@ -104,12 +105,18 @@ ${await buildDownloadMsg(results, info.url)}
     const info = extractXUrl(text)
     if (!info) return e.reply('未识别到 X/Twitter 链接，格式：x.com/用户名/status/推文ID')
     await e.reply('🔍 正在解析，请稍候…')
+    let autoStarted = false
     try {
+      // 解析走代理更稳，用完即关
+      autoStarted = await downloader.ensureProxy(true, 'parse')
       const { source, tweet } = await getTweet(info)
       const id = panel.renderPage(renderTweetHtml(tweet))
       return e.reply(`📄 解析完成${source === 'proxy' ? '（经代理）' : ''}\n🔗 查看页面：${panel.renderLink(id)}\n⏳ 页面 1 小时内有效`)
     } catch (err) {
       return e.reply(`❌ 解析失败：${err.message}`)
+    } finally {
+      // 本次启动的才关，不干扰下载/手动代理
+      if (autoStarted) proxy.stopProxy('parse')
     }
   }
 

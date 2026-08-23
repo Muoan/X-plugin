@@ -25,11 +25,11 @@ function curlErr (code) {
 }
 
 /** 自动起代理 */
-async function ensureProxy (needProxy) {
+export async function ensureProxy (needProxy, owner = 'download') {
   if (!needProxy) return false
   if (proxy.getStatus().running) return false
   try {
-    await proxy.startProxy({ skipTest: true })
+    await proxy.startProxy({ skipTest: true, owner })
     return true
   } catch (err) {
     const msg = String(err?.message || err)

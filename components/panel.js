@@ -530,9 +530,14 @@ export function start () {
       if (p === '/img') {
         const u = url.searchParams.get('u') || ''
         if (!/^https:\/\/(pbs|video|abs)\.twimg\.com\//i.test(u)) return sendText(res, 400, 'bad url')
+        // 媒体按需代理：访问才开，空闲自动关
+        try {
+          if (!proxy.getStatus().running) await proxy.startProxy({ skipTest: true, owner: 'media' })
+          proxy.touchMedia()
+        } catch { /* 起代理失败则直连 */ }
         let mime = 'application/octet-stream'
         try { mime = MIME[path.extname(new URL(u).pathname).toLowerCase()] || mime } catch { /* ignore */ }
-        const args = proxy.getStatus().enabled
+        const args = proxy.getStatus().running
           ? ['-sL', '--max-time', '300', '--socks5-hostname', '127.0.0.1:10890', '--connect-timeout', '5', '-o', '-', u]
           : ['-sL', '--max-time', '300', '--connect-timeout', '5', '-o', '-', u]
         res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store', 'Content-Disposition': 'inline' })
