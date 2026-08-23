@@ -102,7 +102,7 @@ export function shareLink (code) {
   return `${publicUrl()}/s/${code}`
 }
 
-/** 渲染页存储（TTL 固定 1h 不可改） */
+/** 渲染页存储（TTL 固定 30 分钟） */
 const renders = new Map()
 
 /** 保存渲染页 */

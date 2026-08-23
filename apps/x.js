@@ -55,7 +55,7 @@ async function downloadAll (picks, maxMB) {
 }
 
 /** 拼下载结果文案 */
-async function buildDownloadMsg (results, srcUrl = '') {
+function buildDownloadMsg (results, srcUrl = '') {
   const ok = results.filter(r => !r.err)
   const t = results[0]?.task
   if (results.length > 1) {
@@ -126,8 +126,15 @@ export class XResource extends plugin {
       if (okN === results.length) {
         return e.reply(`${base}\n\n${msg}\n📴 关闭自动下载: #X自动下载关`)
       }
-      // 有失败：附渲染选择页（含全部清晰度/封面，点开选）
-      const id = panel.renderPage(renderTweetHtml(tweet), info.url)
+      // 有失败：附渲染选择页（含全部清晰度/封面，点开选；配了 Cookie 附带评论）
+      let comments
+      const ck = cfg.x?.cookie || ''
+      if (ck) {
+        try {
+          comments = await getComments(info.id, ck)
+        } catch { /* 评论失败不影响 */ }
+      }
+      const id = panel.renderPage(renderTweetHtml(tweet, comments), info.url)
       return e.reply(`${base}\n\n${msg}\n🔗 选择页（含全部清晰度）: ${panel.renderLink(id)}\n📴 关闭自动下载: #X自动下载关`)
     } catch (err) {
       return e.reply(`❌ 自动下载失败：${err.message}\n可用 #X解析 查看资源直链，或 #X下载 重试`)
