@@ -259,11 +259,17 @@ export function nextNode () {
   return (cur + 1) % nodes.length
 }
 
-/** 启动代理 */
+/** 启动代理（外部代理模式时不 spawn，直接标记启用） */
 export async function startProxy ({ nodeIndex, skipTest, owner = '' } = {}) {
+  const cfg = getConfig()
+  if (cfg.proxy?.externalUrl) {
+    startedBy = owner
+    currentNode = null
+    setConfig({ proxy: { enabled: true } })
+    return { node: null, ok: true, external: true }
+  }
   // 已在跑：自动场景直接复用，不动启动者
   if (child && owner) return { node: currentNode, ok: true }
-  const cfg = getConfig()
   killStale()
   if (child) stopProxy()
   startedBy = owner
@@ -304,6 +310,12 @@ export async function startProxy ({ nodeIndex, skipTest, owner = '' } = {}) {
 }
 
 export function stopProxy (owner = '') {
+  const cfg = getConfig()
+  // 外部代理模式无进程可关
+  if (cfg.proxy?.externalUrl) {
+    startedBy = ''
+    return true
+  }
   // 只允许关自己启动的（手动开的任何 owner 关不掉）
   if (owner && startedBy !== owner) return false
   if (child) {
@@ -345,7 +357,8 @@ export async function testProxy () {
 export function getStatus () {
   const cfg = getConfig()
   return {
-    running: !!child,
+    running: !!child || !!cfg.proxy?.externalUrl,
+    external: !!cfg.proxy?.externalUrl,
     enabled: cfg.proxy.enabled,
     port: cfg.proxy.port,
     node: currentNode,

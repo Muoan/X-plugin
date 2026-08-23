@@ -32,13 +32,15 @@ async function nodeFetch (url, { timeout, headers }) {
 }
 
 function curlFetch (url, { timeout, headers }) {
-  const port = getConfig().proxy.port
+  const cfg = getConfig()
+  const external = cfg.proxy?.externalUrl || ''
+  const proxyArg = external || `socks5h://127.0.0.1:${cfg.proxy?.port || 10890}`
   const tmpBody = path.join(os.tmpdir(), `xplug_body_${Date.now()}_${Math.random().toString(36).slice(2)}.tmp`)
   const tmpHdr = path.join(os.tmpdir(), `xplug_hdr_${Date.now()}_${Math.random().toString(36).slice(2)}.tmp`)
   const args = [
     '-s', '-L',
     '-m', String(Math.max(1, Math.floor(timeout / 1000))),
-    '-x', `socks5h://127.0.0.1:${port}`,
+    '-x', proxyArg,
     '-D', tmpHdr,
     '-o', tmpBody,
     '-w', '%{http_code}'

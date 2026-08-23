@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import path from 'node:path'
-import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments, checkCookie } from '../components/x.js'
+import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments, checkCookie, fetchUser, fetchTimeline, fetchSearch, fetchNotifications, renderUserHtml, renderListHtml } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
 import * as downloader from '../components/downloader.js'
 import * as proxy from '../components/proxy.js'
@@ -64,7 +64,14 @@ export class XResource extends plugin {
         { reg: /^#?X自动下载\s*(开|关)/i, fnc: 'toggleAuto' },
         { reg: /^#?X设置Cookie\s*\S+/i, fnc: 'cmdSetCookie' },
         { reg: /^#?X删除Cookie/i, fnc: 'cmdDelCookie' },
-        { reg: /^#?X检查Cookie/i, fnc: 'cmdCheckCookie' }
+        { reg: /^#?X检查Cookie/i, fnc: 'cmdCheckCookie' },
+        { reg: /^#?X用户\s*[A-Za-z0-9_]+/i, fnc: 'cmdUser' },
+        { reg: /^#?X时间线/i, fnc: 'cmdTimeline' },
+        { reg: /^#?X搜索\s*\S+/i, fnc: 'cmdSearch' },
+        { reg: /^#?X查看\s*\d+/i, fnc: 'cmdView' },
+        { reg: /^#?X通知/i, fnc: 'cmdNotify' },
+        { reg: /^#?X外部代理\s*\S+/i, fnc: 'cmdExtProxy' },
+        { reg: /^#?X外部代理关/i, fnc: 'cmdExtProxyOff' }
       ]
     })
   }
@@ -160,6 +167,121 @@ ${await buildDownloadMsg(results, info.url)}
       // 本次启动的才关，不干扰下载/手动代理
       if (autoStarted) proxy.stopProxy('parse')
     }
+  }
+
+  /** 通用：浏览器抓取需要代理 + Cookie（fn 返回 { html, link, title, reply? }） */
+  async _browserCmd (e, fn, okMsg) {
+    const ck = getConfig().x?.cookie || ''
+    if (!ck) return e.reply('❌ 未配置 Cookie，请先 #X设置Cookie（或 web 面板填写）')
+    await e.reply('⏳ 正在抓取，约 15 秒…')
+    let autoStarted = false
+    try {
+      autoStarted = await downloader.ensureProxy(true, 'parse')
+      const { html, link, title, reply } = await fn()
+      const id = panel.renderPage(html, link)
+      const msg = reply || `${okMsg}\n🔗 查看：${panel.renderLink(id)}\n📄 ${title}\n⏳ 页面 30 分钟内有效`
+      return e.reply(msg)
+    } catch (err) {
+      return e.reply(`❌ ${err.message}`)
+    } finally {
+      if (autoStarted) { try { proxy.stopProxy('parse') } catch { /* ignore */ } }
+    }
+  }
+
+  /** #X用户 <用户名> */
+  async cmdUser (e) {
+    const name = e.msg.replace(/^#?X用户\s*/i, '').trim()
+    if (!name) return e.reply('格式：#X用户 <用户名>')
+    return this._browserCmd(e, async () => {
+      const { user, tweets } = await fetchUser(name)
+      return {
+        html: renderUserHtml(user, tweets),
+        link: `https://x.com/${name}`,
+        title: `${tweets?.length || 0} 条帖子`
+      }
+    }, `👤 ${name} 的资料已抓到`)
+  }
+
+  /** #X时间线 [N] */
+  async cmdTimeline (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
+    const m = e.msg.match(/^#?X时间线\s*(\d+)?/i)
+    const limit = Math.min(Number(m?.[1] || 20), 50)
+    return this._browserCmd(e, async () => {
+      const list = await fetchTimeline()
+      return {
+        html: renderListHtml({ title: '首页时间线', subtitle: `最新 ${list.length} 条`, items: list.slice(0, limit) }),
+        link: 'https://x.com/home',
+        title: `${Math.min(list.length, limit)} 条推文`
+      }
+    }, '📰 首页时间线已抓到')
+  }
+
+  /** #X搜索 <关键词>（id 化：每条独立页面 + 编号，可 #X查看） */
+  async cmdSearch (e) {
+    const q = e.msg.replace(/^#?X搜索\s*/i, '').trim()
+    if (!q) return e.reply('格式：#X搜索 <关键词>')
+    const maxN = Math.min(Number(getConfig().x?.maxSearchResults || 10), 50)
+    return this._browserCmd(e, async () => {
+      const list = await fetchSearch(q)
+      const items = list.slice(0, maxN)
+      const owner = String(e.user_id || e.sender?.user_id || e.message_id || '')
+      const sessItems = items.map((t, i) => {
+        const pid = panel.renderPage(renderListHtml({ title: `${q} · 结果 ${i + 1}`, items: [t] }), t.url || `https://x.com/search?q=${encodeURIComponent(q)}`)
+        return { idx: i + 1, pageId: pid, user: t.screen_name, text: (t.text || '').slice(0, 60) }
+      })
+      createSearchSession(owner, q, sessItems)
+      const listHtml = renderListHtml({ title: `搜索：${q}`, subtitle: `最新 ${items.length} 条`, items })
+      const listId = panel.renderPage(listHtml, `https://x.com/search?q=${encodeURIComponent(q)}`)
+      const lines = sessItems.map(it => `${it.idx}. @${it.user || '?'} ${it.text.replace(/\n/g, ' ')}`).join('\n')
+      return {
+        html: listHtml,
+        link: `https://x.com/search?q=${encodeURIComponent(q)}`,
+        title: `${items.length} 条结果`,
+        reply: `🔎 “${q}” 共 ${items.length} 条\n\n${lines}\n\n📄 列表：${panel.renderLink(listId)}\n💬 回复 #X查看 <编号> 看单条详情（30 分钟内有效，仅你可见）`
+      }
+    }, `🔎 “${q}” 搜索结果已抓到`)
+  }
+
+  /** #X查看 <编号>：看自己的搜索会话某条 */
+  async cmdView (e) {
+    const n = Number(e.msg.replace(/^#?X查看\s*/i, '').trim())
+    if (!n || n < 1) return e.reply('格式：#X查看 <编号>')
+    const owner = String(e.user_id || e.sender?.user_id || e.message_id || '')
+    const sess = getMySearchSession(owner)
+    if (!sess) return e.reply('❌ 没有找到你的搜索记录（30 分钟内有效），请先 #X搜索')
+    const it = sess.items.find(i => i.idx === n)
+    if (!it) return e.reply(`❌ 编号 ${n} 不存在（当前会话共 ${sess.items.length} 条）`)
+    return e.reply(`📄 「${sess.keyword}」结果 ${n}/${sess.items.length}\n👤 @${it.user || '?'} ${it.text}\n🔗 ${panel.renderLink(it.pageId)}\n⏳ 30 分钟内有效`)
+  }
+
+  /** #X通知 */
+  async cmdNotify (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
+    return this._browserCmd(e, async () => {
+      const list = await fetchNotifications()
+      return {
+        html: renderListHtml({ title: '通知', subtitle: `最新 ${list.length} 条`, items: list.slice(0, 30), type: 'notifications' }),
+        link: 'https://x.com/notifications',
+        title: `${list.length} 条通知`
+      }
+    }, '🔔 通知已抓到')
+  }
+
+  /** #X外部代理 <url> */
+  async cmdExtProxy (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
+    const url = e.msg.replace(/^#?X外部代理\s*/i, '').trim()
+    if (!/^(socks5h?|http|https):\/\/\S+$/i.test(url)) return e.reply('格式：#X外部代理 socks5://127.0.0.1:7891（或 http://127.0.0.1:7890）\n走已有代理，不再启动内置 v2ray')
+    setConfig({ proxy: { externalUrl: url } })
+    return e.reply(`✅ 已设置外部代理：${url}\n解析/下载/浏览器抓取将直接走该代理（无需订阅/节点）`)
+  }
+
+  /** #X外部代理关 */
+  async cmdExtProxyOff (e) {
+    if (!e.isMaster) return e.reply('❌ 仅主人可用')
+    setConfig({ proxy: { externalUrl: '' } })
+    return e.reply('✅ 已关闭外部代理，恢复内置 v2ray 订阅模式')
   }
 
   async cmdDownload (e) {

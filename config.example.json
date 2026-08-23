@@ -4,6 +4,7 @@
     "port": 10890,
     "enabled": false,
     "nodeIndex": 0,
+    "externalUrl": "",
     "testUrl": "https://www.gstatic.com/generate_204"
   },
   "x": {
@@ -11,7 +12,8 @@
     "useProxyFallback": true,
     "autoDownload": true,
     "cookie": "auth_token=xxx; ct0=yyy",
-    "tweetDetailQueryId": ""
+    "tweetDetailQueryId": "",
+    "maxSearchResults": 10
   },
   "panel": {
     "port": 3007,

@@ -4,7 +4,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { getConfig, setConfig, DATA_DIR, PLUGIN_DIR } from './config.js'
-import { extractXUrl, getTweet, buildXMessage, formatMedia, pickDownloadUrls } from './x.js'
+import { extractXUrl, getTweet, buildXMessage, formatMedia, pickDownloadUrls, fetchUser, fetchTimeline, fetchSearch, fetchNotifications, renderUserHtml, renderListHtml } from './x.js'
 import * as proxy from './proxy.js'
 import * as downloader from './downloader.js'
 import { fetchText } from './fetch.js'
@@ -693,6 +693,59 @@ export function start () {
       // 其余需认证
       if (!checkAuth(req, token)) return json(res, 401, { error: '未授权，请先登录' })
 
+      // X 查询（浏览器通道：用户/时间线/搜索/通知）
+      if (req.method === 'POST' && p === '/api/x/query') {
+        const body = await readBody(req)
+        const type = String(body.type || '')
+        const value = String(body.value || '').trim()
+        try {
+          // 外部代理模式直接可用；否则确保 v2ray 在跑
+          if (!proxy.getStatus().external) {
+            if (!proxy.getStatus().running) await proxy.startProxy({ skipTest: true, owner: '' })
+          }
+          let html = ''
+          let link = ''
+          let title = ''
+          if (type === 'user') {
+            if (!/^[A-Za-z0-9_]{1,20}$/.test(value)) return json(res, 400, { error: '用户名格式不对' })
+            const { user, tweets } = await fetchUser(value)
+            html = renderUserHtml(user, tweets)
+            link = `https://x.com/${value}`
+            title = `${tweets?.length || 0} 条帖子`
+          } else if (type === 'timeline') {
+            const list = await fetchTimeline()
+            html = renderListHtml({ title: '首页时间线', subtitle: `最新 ${list.length} 条`, items: list.slice(0, 20) })
+            link = 'https://x.com/home'
+            title = `${Math.min(list.length, 20)} 条推文`
+          } else if (type === 'search') {
+            if (!value) return json(res, 400, { error: '请输入关键词' })
+            const list = await fetchSearch(value)
+            const maxN = Math.min(Number(getConfig().x?.maxSearchResults || 10), 50)
+            const items = list.slice(0, maxN)
+            // 每条独立页面（id 化）
+            const pageItems = items.map((t, i) => {
+              const pid = renderPage(renderListHtml({ title: `${value} · 结果 ${i + 1}`, items: [t] }), t.url || `https://x.com/search?q=${encodeURIComponent(value)}`)
+              return { idx: i + 1, link: renderLink(pid), user: t.screen_name, text: (t.text || '').slice(0, 60) }
+            })
+            html = renderListHtml({ title: `搜索：${value}`, subtitle: `最新 ${items.length} 条`, items })
+            link = `https://x.com/search?q=${encodeURIComponent(value)}`
+            title = `${items.length} 条结果`
+            return json(res, 200, { link: renderLink(renderPage(html, link)), title, items: pageItems })
+          } else if (type === 'notify') {
+            const list = await fetchNotifications()
+            html = renderListHtml({ title: '通知', subtitle: `最新 ${list.length} 条`, items: list.slice(0, 30), type: 'notifications' })
+            link = 'https://x.com/notifications'
+            title = `${list.length} 条通知`
+          } else {
+            return json(res, 400, { error: '未知查询类型' })
+          }
+          const id = renderPage(html, link)
+          return json(res, 200, { link: renderLink(id), title })
+        } catch (err) {
+          return json(res, 500, { error: err.message })
+        }
+      }
+
       if (req.method === 'POST' && p === '/api/parse') {
         const body = await readBody(req)
         const info = extractXUrl(body.url || '')
@@ -818,12 +871,14 @@ export function start () {
             subscribe_url: maskSecret(cfg.proxy?.subscribeUrl || ''),
             subscribe_configured: !!cfg.proxy?.subscribeUrl,
             port: cfg.proxy?.port || 10890,
-            node_index: cfg.proxy?.nodeIndex ?? 0
+            node_index: cfg.proxy?.nodeIndex ?? 0,
+            external_url: cfg.proxy?.externalUrl || ''
           },
           x: {
             cookie: cfg.x?.cookie || '',
             cookie_configured: !!cfg.x?.cookie,
-            auto_download: cfg.x?.autoDownload !== false
+            auto_download: cfg.x?.autoDownload !== false,
+            max_search_results: cfg.x?.maxSearchResults ?? 10
           }
         } })
       }
@@ -841,6 +896,7 @@ export function start () {
             if (body.proxy.subscribe_url !== undefined) ppatch.subscribeUrl = String(body.proxy.subscribe_url)
             if (body.proxy.port !== undefined) ppatch.port = Number(body.proxy.port)
             if (body.proxy.node_index !== undefined) ppatch.nodeIndex = Number(body.proxy.node_index)
+            if (body.proxy.external_url !== undefined) ppatch.externalUrl = String(body.proxy.external_url)
             if (Object.keys(ppatch).length) setConfig({ proxy: ppatch })
           }
           const proxyPortChanged = !!(body.proxy?.port !== undefined && Number(body.proxy.port) !== oldProxyPort)
@@ -848,6 +904,7 @@ export function start () {
           // X Cookie 保存/清空
           if (body.x?.cookie !== undefined) setConfig({ x: { cookie: String(body.x.cookie) } })
           if (body.x?.clear_cookie) setConfig({ x: { cookie: '' } })
+          if (body.x?.max_search_results !== undefined) setConfig({ x: { maxSearchResults: Math.min(Math.max(Number(body.x.max_search_results) || 10, 1), 50) } })
           return json(res, 200, { ok: true, port_changed: portChanged, proxy_port_changed: proxyPortChanged })
       }
 

@@ -33,6 +33,7 @@
     <button class="tab active" data-tab="tasks">📥 任务</button>
     <button class="tab" data-tab="files">📁 文件</button>
     <button class="tab" data-tab="shares">🔗 分享</button>
+    <button class="tab" data-tab="xquery">🔎 X 查询</button>
     <button class="tab" data-tab="proxy">🌐 代理</button>
     <button class="tab" data-tab="settings">⚙️ 设置</button>
   </nav>
@@ -68,6 +69,39 @@
         </div>
       </div>
       <div id="shareList" class="task-list"></div>
+    </section>
+
+    <section id="tab-xquery" class="panel hidden">
+      <div class="settings-form">
+        <div class="set-card">
+          <h3>🔎 X 查询（需登录 Cookie）</h3>
+          <p class="hint">通过登录 Cookie 抓取：用户资料、首页时间线、搜索、通知。每次约 15 秒，结果生成 30 分钟有效的渲染页。</p>
+          <div class="form-row">
+            <label>查询类型</label>
+            <select id="xqType" class="form-input">
+              <option value="user">👤 用户资料（输入用户名，如 hypefury）</option>
+              <option value="search">🔎 搜索（输入关键词）</option>
+              <option value="timeline">📰 首页时间线</option>
+              <option value="notify">🔔 通知</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>查询参数</label>
+            <input id="xqValue" class="form-input" type="text" placeholder="用户名 / 搜索关键词">
+          </div>
+          <div class="form-row">
+            <label></label>
+            <button id="xqRunBtn" class="btn primary">开始查询</button>
+          </div>
+          <p id="xqMsg" class="success"></p>
+          <div id="xqResult" class="hidden">
+            <div class="form-row">
+              <label>结果页面</label>
+              <div class="token-box"><a id="xqLink" href="#" target="_blank" rel="noopener"></a></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="tab-settings" class="panel hidden">
@@ -121,6 +155,10 @@
               <button id="clearCookieBtn" class="btn ghost sm">清空 Cookie</button>
             </div>
           </div>
+          <div class="form-row">
+            <label>搜索最多条数<span class="hint-inline">#X搜索 每条生成独立页面，可后台控制数量（1-50）</span></label>
+            <input id="setMaxSearch" class="form-input" type="number" min="1" max="50">
+          </div>
         </div>
 
         <button id="saveConfigBtn" class="btn primary save-config">保存面板设置</button>
@@ -147,6 +185,16 @@
           <div class="form-row">
             <label>代理端口<span class="hint-inline">socks5 监听端口，需重启代理生效</span></label>
             <input id="setProxyPort" class="form-input" type="number" min="1024" max="65535">
+          </div>
+          <div class="form-row">
+            <label>外部代理<span class="hint-inline">已有代理时填地址直接走它（如 socks5://127.0.0.1:7891 或 http://127.0.0.1:7890），留空 = 用内置 v2ray 订阅</span></label>
+            <input id="setExtProxy" class="form-input" type="text" placeholder="socks5://127.0.0.1:7891">
+          </div>
+          <div class="form-row">
+            <label></label>
+            <div class="set-actions">
+              <button id="saveExtProxyBtn" class="btn sm">保存外部代理</button>
+            </div>
           </div>
           <div class="form-row">
             <label>当前节点<span class="hint-inline">选择后点「切换节点并启动」生效</span></label>

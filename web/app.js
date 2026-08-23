@@ -314,6 +314,7 @@ async function loadConfig () {
     $('#tokenBox').textContent = config.token
     if (config.x) {
       $('#setCookie').value = config.x.cookie_configured ? config.x.cookie : ''
+      $('#setMaxSearch').value = config.x.max_search_results ?? 10
     }
     loadProxyStatus()
   } catch (err) { toast(err.message, true) }
@@ -327,6 +328,7 @@ async function loadProxyTab () {
       $('#setSubscribe').value = ''
       $('#setSubscribe').placeholder = config.proxy.subscribe_configured ? '已设置订阅（输入新链接覆盖）' : 'V2Board 订阅地址'
       $('#setProxyPort').value = config.proxy.port
+      $('#setExtProxy').value = config.proxy.external_url || ''
     }
     loadProxyStatus()
     loadNodes()
@@ -454,6 +456,56 @@ $('#speedtestBtn').addEventListener('click', async () => {
     btn.disabled = false
   }
 })
+$('#saveExtProxyBtn').addEventListener('click', async () => {
+  const url = $('#setExtProxy').value.trim()
+  if (url && !/^(socks5h?|http|https):\/\/\S+$/i.test(url)) return proxyMsg('格式不对：socks5://127.0.0.1:7891 或 http://127.0.0.1:7890', true)
+  try {
+    await api('/api/config', { method: 'PUT', body: { proxy: { external_url: url } } })
+    proxyMsg(url ? `已保存外部代理：${url}` : '已清空外部代理（恢复 v2ray 订阅模式）')
+    loadProxyStatus()
+  } catch (err) { proxyMsg(err.message, true) }
+})
+/* X 查询 tab */
+$('#xqRunBtn').addEventListener('click', async () => {
+  const type = $('#xqType').value
+  const value = $('#xqValue').value.trim()
+  const btn = $('#xqRunBtn')
+  const msg = $('#xqMsg')
+  const box = $('#xqResult')
+  if (type !== 'timeline' && type !== 'notify' && !value) return msg.textContent = '请输入查询参数'; msg.className = 'error'
+  btn.disabled = true
+  msg.textContent = '⏳ 正在抓取（约 15 秒），请稍候…'
+  msg.className = 'success'
+  box.classList.add('hidden')
+  try {
+    const r = await api('/api/x/query', { method: 'POST', body: { type, value } })
+    msg.textContent = '✅ 完成，' + (r.title || '')
+    const link = $('#xqLink')
+    link.href = r.link
+    link.textContent = r.link
+    box.classList.remove('hidden')
+    // 搜索：展示每条独立页面链接
+    let extra = ''
+    if (r.items && r.items.length) {
+      extra = '<div class="form-row"><label>单条结果</label><div class="token-box">' + r.items.map(it =>
+        `<a href="${it.link}" target="_blank" rel="noopener">#${it.idx} @${esc(it.user || '?')}</a> ${esc(it.text)}`
+      ).join('<br>') + '</div></div>'
+    }
+    const old = box.querySelector('.xq-extra')
+    if (old) old.remove()
+    if (extra) {
+      const div = document.createElement('div')
+      div.className = 'xq-extra'
+      div.innerHTML = extra
+      box.appendChild(div)
+    }
+  } catch (err) {
+    msg.textContent = '❌ ' + err.message
+    msg.className = 'error'
+  } finally {
+    btn.disabled = false
+  }
+})
 $('#saveConfigBtn').addEventListener('click', async () => {
   try {
     const body = {
@@ -462,7 +514,10 @@ $('#saveConfigBtn').addEventListener('click', async () => {
       cleanup_minutes: Number($('#setCleanup').value),
       max_file_mb: Number($('#setMaxFile').value),
       proxy: { port: Number($('#setProxyPort').value) },
-      x: { cookie: $('#setCookie').value.trim() }
+      x: {
+        cookie: $('#setCookie').value.trim(),
+        max_search_results: Number($('#setMaxSearch').value)
+      }
     }
     const { port_changed, proxy_port_changed } = await api('/api/config', { method: 'PUT', body })
     const notes = []

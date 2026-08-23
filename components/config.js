@@ -15,6 +15,8 @@ const DEFAULTS = {
     enabled: false,
     // 节点序号
     nodeIndex: 0,
+    // 外部代理（已有代理时直接走它，不启动内置 v2ray）
+    externalUrl: '',
     // 测试地址
     testUrl: 'https://www.gstatic.com/generate_204'
   },
@@ -28,7 +30,9 @@ const DEFAULTS = {
     // X 账号 Cookie
     cookie: '',
     // 评论接口 ID
-    tweetDetailQueryId: ''
+    tweetDetailQueryId: '',
+    // 搜索最多条数
+    maxSearchResults: 10
   },
   panel: {
     // 面板端口
