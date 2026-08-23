@@ -32,6 +32,7 @@
   <nav class="tabs">
     <button class="tab active" data-tab="tasks">📥 任务</button>
     <button class="tab" data-tab="files">📁 文件</button>
+    <button class="tab" data-tab="proxy">🌐 代理</button>
     <button class="tab" data-tab="settings">⚙️ 设置</button>
   </nav>
 
@@ -80,7 +81,26 @@
         </div>
 
         <div class="set-card">
-          <h3>🌐 代理设置</h3>
+          <h3>🔑 安全设置</h3>
+          <div class="form-row">
+            <label>访问令牌<span class="hint-inline">面板登录凭证，重置后旧令牌立即失效</span></label>
+            <div class="token-box" id="tokenBox"></div>
+          </div>
+          <div class="form-row">
+            <label></label>
+            <button id="resetTokenBtn" class="btn ghost sm">重置令牌</button>
+          </div>
+        </div>
+
+        <button id="saveConfigBtn" class="btn primary save-config">保存面板设置</button>
+        <p id="configMsg" class="success"></p>
+      </div>
+    </section>
+
+    <section id="tab-proxy" class="panel hidden">
+      <div class="settings-form">
+        <div class="set-card">
+          <h3>🌐 代理配置</h3>
           <div id="proxyStatus" class="proxy-status"></div>
           <div class="form-row">
             <label>订阅链接<span class="hint-inline">V2Board 订阅地址，保存后刷新节点</span></label>
@@ -117,21 +137,6 @@
           </div>
           <p id="proxyMsg" class="success"></p>
         </div>
-
-        <div class="set-card">
-          <h3>🔑 安全设置</h3>
-          <div class="form-row">
-            <label>访问令牌<span class="hint-inline">面板登录凭证，重置后旧令牌立即失效</span></label>
-            <div class="token-box" id="tokenBox"></div>
-          </div>
-          <div class="form-row">
-            <label></label>
-            <button id="resetTokenBtn" class="btn ghost sm">重置令牌</button>
-          </div>
-        </div>
-
-        <button id="saveConfigBtn" class="btn primary save-config">保存面板设置</button>
-        <p id="configMsg" class="success"></p>
       </div>
     </section>
   </main>

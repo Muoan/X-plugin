@@ -86,6 +86,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     $('#tab-' + tab.dataset.tab).classList.remove('hidden')
     if (tab.dataset.tab === 'files') loadFiles()
     if (tab.dataset.tab === 'settings') loadConfig()
+    if (tab.dataset.tab === 'proxy') loadProxyTab()
   })
 })
 
@@ -220,8 +221,15 @@ async function loadConfig () {
     $('#setCleanup').value = config.cleanup_minutes
     $('#setMaxFile').value = config.max_file_mb
     $('#tokenBox').textContent = config.token
+    loadProxyStatus()
+  } catch (err) { toast(err.message, true) }
+}
+
+/** 代理 tab 初始化 */
+async function loadProxyTab () {
+  try {
+    const { config } = await api('/api/config')
     if (config.proxy) {
-      // 不回填，仅提示
       $('#setSubscribe').value = ''
       $('#setSubscribe').placeholder = config.proxy.subscribe_configured ? '已设置订阅（输入新链接覆盖）' : 'V2Board 订阅地址'
       $('#setProxyPort').value = config.proxy.port
