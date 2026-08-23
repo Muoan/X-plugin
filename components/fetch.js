@@ -34,7 +34,10 @@ async function nodeFetch (url, { timeout, headers }) {
 function curlFetch (url, { timeout, headers }) {
   const cfg = getConfig()
   const external = cfg.proxy?.externalUrl || ''
-  const proxyArg = external || `socks5h://127.0.0.1:${cfg.proxy?.port || 10890}`
+  // curl 支持 socks5h（远端 DNS），外部地址统一转 socks5h 避免本地解析被墙
+  const proxyArg = external
+    ? String(external).replace(/^socks5:\/\//i, 'socks5h://')
+    : `socks5h://127.0.0.1:${cfg.proxy?.port || 10890}`
   const tmpBody = path.join(os.tmpdir(), `xplug_body_${Date.now()}_${Math.random().toString(36).slice(2)}.tmp`)
   const tmpHdr = path.join(os.tmpdir(), `xplug_hdr_${Date.now()}_${Math.random().toString(36).slice(2)}.tmp`)
   const args = [
