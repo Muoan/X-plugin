@@ -72,8 +72,8 @@ export class XResource extends plugin {
     // 自动下载
     const cfg = getConfig()
     if (cfg.x.autoDownload === false) {
-      await this.doParse(e, e.msg)
-      return true
+      // 自动下载关闭时自动执行解析任务（渲染页直链）
+      return this.cmdParse(e)
     }
     await e.reply('🔍 识别到 X 链接，正在解析并下载，请稍候…')
     const info = extractXUrl(e.msg)
@@ -156,16 +156,4 @@ ${await buildDownloadMsg(results, info.url)}
     }
   }
 
-  async doParse (e, text) {
-    const info = extractXUrl(text)
-    if (!info) {
-      return e.reply('未识别到 X/Twitter 链接，格式：x.com/用户名/status/推文ID')
-    }
-    try {
-      const { source, tweet } = await getTweet(info)
-      return e.reply(buildXMessage(tweet, source))
-    } catch (err) {
-      return e.reply(`❌ 解析失败：${err.message}`)
-    }
-  }
 }
