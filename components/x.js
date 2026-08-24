@@ -177,7 +177,7 @@ export async function getTweet (info, { useProxyFallback = true } = {}) {
   throw new Error(errors.join('；') || '未知错误')
 }
 
-/** 挑下载资源（视频优先，纯图全下） */
+/** 挑下载资源：视频/GIF 与图片全部返回（视频在前，图片在后） */
 export function pickDownloadUrls (tweet) {
   const media = tweet.media?.all || []
   const vids = []
@@ -192,8 +192,7 @@ export function pickDownloadUrls (tweet) {
       imgs.push({ url: item.url, kind: '图片' })
     }
   }
-  if (vids.length) return vids
-  return imgs
+  return [...vids, ...imgs]
 }
 
 /** 媒体转链接 */

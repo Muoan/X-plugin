@@ -1,4 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js'
+// 2026-08-24: pickDownloadUrls 已改为 视频/GIF+图片 全部返回（修：有GIF时普通图片被丢弃）
 import path from 'node:path'
 import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments, checkCookie, fetchUser, fetchTimeline, fetchSearch, fetchNotifications, renderUserHtml, renderListHtml, truncate } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
