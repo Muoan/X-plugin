@@ -129,6 +129,13 @@ export function cancelTask (id) {
 export function retryTask (id) {
   const t = tasks.get(String(id))
   if (!t || !['failed', 'canceled'].includes(t.status)) return false
+  // 重置失败/未完成的分项（保留已完成 file_id 的），否则重试会被当成单文件任务去下 t.url
+  for (const f of (t.files || [])) {
+    if (!f.file_id) {
+      f.error = ''
+      f.file_path = ''
+    }
+  }
   t.status = 'queued'
   t.error = ''
   t.progress = 0
@@ -240,6 +247,19 @@ async function runTask (t) {
     const maxMB = getConfig().panel?.maxFileMB || 500
     const picks = (t.files || []).filter(f => !f.file_id && !f.error)
     if (picks.length) return runMultiTask(t, picks, maxMB)
+    // 有 files 但无待下载分项：不能回退去下载 t.url（面板任务 t.url 是推文页，会下成 .bin）
+    if ((t.files || []).length) {
+      const doneFiles = (t.files || []).filter(f => f.file_id)
+      if (doneFiles.length) {
+        t.status = 'done'
+        t.finished_at = Date.now()
+        return
+      }
+      t.status = 'failed'
+      t.error = '全部资源下载失败'
+      t.finished_at = Date.now()
+      return
+    }
     const r = await downloader.downloadWithProgress(t.url, {
       id: t.code,
       maxMB,
