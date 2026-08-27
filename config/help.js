@@ -1,6 +1,6 @@
 export const helpCfg = {
   title: 'X 解析 · 帮助',
-  subTitle: 'Miao-Yunzai & Trss-Yunzai & X-plugin',
+  subTitle: 'Yunzai & X-plugin',
   colCount: 3,
   colWidth: 265
 }
@@ -63,9 +63,9 @@ export const helpList = [
     ]
   },
   {
-    group: 'ℹ️ 其他',
+    group: 'ℹ️ 说明',
     list: [
-      { emoji: '❓', title: '#X帮助', desc: '本帮助菜单' }
+      { emoji: '❓', title: '封号概不负责', desc: '嘿壳！' }
     ]
   }
 ]
