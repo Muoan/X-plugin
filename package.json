@@ -1,7 +1,7 @@
 {
   "name": "X-plugin",
   "version": "1.0.0",
-  "description": "X/Twitter 链接解析下载 + 评论/用户/时间线/搜索/通知查询 + 订阅代理/外部代理 + Web 面板",
+  "description": "X/Twitter 链接解析下载 + 评论/用户/时间线/搜索/通知查询 +订阅代理/外部代理 + Web 面板",
   "type": "module",
   "main": "index.js",
   "author": "OpenClaw"
