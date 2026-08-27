@@ -1072,7 +1072,6 @@ export function start () {
   })
 
   server.listen(port, '0.0.0.0', () => {
-    console.log(chalk.greenBright(`[X-plugin] 🚀 面板已启动: http://0.0.0.0:${port}（token: ${token}）`))
   })
   return server
 }

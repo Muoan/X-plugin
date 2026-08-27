@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import chalk from 'chalk'
+import { getConfig } from './components/config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const name = path.basename(__dirname)
@@ -38,16 +39,18 @@ try {
 }
 
 const cost = Date.now() - start
-const line = '-'.repeat(30)
-const colors = [chalk.cyanBright.bold, chalk.greenBright.bold, chalk.magentaBright.bold, chalk.yellowBright.bold]
-logger?.info?.(line)
-const msgs = [
-  `${name} 加载完成 (*^▽^*)`,
-  `成功 ${ok} 个，失败 ${fail} 个`,
-  `✅  总耗时: ${cost} ms`
+// 启动横幅（模仿 Ymoan 启动初始化样式，整块打印）
+const line = chalk.gray('-'.repeat(30))
+const port = getConfig().panel?.port || 3007
+const bootLines = [
+  line,
+  `${chalk.cyanBright.bold(name)} ${chalk.greenBright.bold('v1.0.0')} ${chalk.cyanBright.bold('加载完成 (*^▽^*)')}`,
+  `  ${chalk.yellow('成功')} ${chalk.whiteBright.bold(ok)} ${chalk.yellow('个，失败')} ${chalk.whiteBright.bold(fail)} ${chalk.yellow('个')}`,
+  `${chalk.greenBright('✅ 总耗时:')} ${chalk.whiteBright(cost)} ms`,
+  `${chalk.greenBright('🚀 面板已启动:')} http://0.0.0.0:${port}`,
+  line
 ]
-msgs.forEach((msg, i) => logger?.info?.(colors[i % colors.length](msg)))
-logger?.info?.(line)
+console.log('\n' + bootLines.join('\n') + '\n')
 
 // 启动面板
 try {
