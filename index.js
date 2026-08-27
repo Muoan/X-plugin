@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import chalk from 'chalk'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const name = path.basename(__dirname)
@@ -36,7 +37,17 @@ try {
   logger?.error?.(`[${name}] 载入插件时发生错误：`, err)
 }
 
-logger?.info?.(`[${name}] 加载完成：成功 ${ok} 个，失败 ${fail} 个，耗时 ${Date.now() - start}ms`)
+const cost = Date.now() - start
+const line = '-'.repeat(30)
+const colors = [chalk.cyanBright.bold, chalk.greenBright.bold, chalk.magentaBright.bold, chalk.yellowBright.bold]
+logger?.info?.(line)
+const msgs = [
+  `${name} 加载完成 (*^▽^*)`,
+  `成功 ${ok} 个，失败 ${fail} 个`,
+  `✅  总耗时: ${cost} ms`
+]
+msgs.forEach((msg, i) => logger?.info?.(colors[i % colors.length](msg)))
+logger?.info?.(line)
 
 // 启动面板
 try {
