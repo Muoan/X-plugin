@@ -17,7 +17,7 @@ let startedBy = ''
 /** 代理活跃时间 */
 let mediaTs = 0
 
-// 媒体代理空闲 5 分钟自动关
+// 空闲自动关
 setInterval(() => {
   if (startedBy === 'media' && mediaTs && Date.now() - mediaTs > 5 * 60 * 1000) stopProxy('media')
 }, 30000)

@@ -1,5 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js'
-// 2026-08-24: pickDownloadUrls 已改为 视频/GIF+图片 全部返回（修：有GIF时普通图片被丢弃）
+// 修复GIF丢弃
 import path from 'node:path'
 import { extractXUrl, getTweet, buildXMessage, pickDownloadUrls, renderTweetHtml, getComments, checkCookie, fetchUser, fetchTimeline, fetchSearch, fetchNotifications, renderUserHtml, renderListHtml, truncate } from '../components/x.js'
 import { getConfig, setConfig } from '../components/config.js'
@@ -11,7 +11,7 @@ import * as panel from '../components/panel.js'
 async function downloadAll (picks, maxMB) {
   const results = []
   if (!picks.length) return results
-  // 统一建任务（web 实时进度），完成后由 buildDownloadMsg 复用任务 code
+  // 统一建任务
   const t = panel.createTask(picks[0].url, { kind: picks[0].kind, name: picks[0].author || '' }, false)
   let doneBytes = 0
   let totalBytes = 0
@@ -127,7 +127,7 @@ export class XResource extends plugin {
       if (okN === results.length) {
         return e.reply(`${base}\n\n${msg}\n📴 关闭自动下载: #X自动下载关`)
       }
-      // 有失败：附渲染选择页（含全部清晰度/封面，点开选；配了 Cookie 附带评论）
+      // 失败渲染选择页
       let comments
       const ck = cfg.x?.cookie || ''
       if (ck) {

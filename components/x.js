@@ -92,7 +92,7 @@ function extractComments (json, tweetId) {
     if (legacy.id_str === tweetId) return
     if (seen.has(legacy.id_str)) return
     seen.add(legacy.id_str)
-    // 2026：用户新结构（avatar.image_url / core.name），旧 legacy 兜底
+    // 用户新结构
     const ur = r?.core?.user_results?.result || {}
     const uName = ur.core?.name || ur.legacy?.name || ''
     const uScreen = ur.core?.screen_name || ur.legacy?.screen_name || ''
@@ -334,7 +334,7 @@ export function renderTweetHtml (tweet, comments) {
 /** 规范化推文（GraphQL result → 简对象） */
 function normTweet (r) {
   const legacy = r?.legacy || {}
-  // 2026：用户是新结构（avatar.image_url / core.name），旧 legacy 兜底
+  // 用户新结构
   const ur = r?.core?.user_results?.result || {}
   const uName = ur.core?.name || ur.legacy?.name || ''
   const uScreen = ur.core?.screen_name || ur.legacy?.screen_name || ''
@@ -414,7 +414,7 @@ export async function fetchUser (screenName) {
   const userJson = hits.UserByScreenName
   if (!userJson || !userJson.data?.user?.result) throw new Error('用户不存在，或未配置有效 Cookie')
   const r = userJson.data.user.result
-  // 2026 新结构：无 legacy，字段在顶层 + core/avatar/banner/关系计数
+  // 新结构字段
   const user = {
     id: r.rest_id || '',
     name: r.core?.name || '',

@@ -1,5 +1,5 @@
 // 浏览器拦截GraphQL响应
-// 前端带认证头，绕cf校验
+// 认证头绕cf
 import { createRequire } from 'node:module'
 import { getConfig } from './config.js'
 
@@ -96,7 +96,7 @@ export async function checkCookieByBrowser () {
   try {
     const hits = await graphQLByBrowser('/home', ['HomeTimeline'], { timeout: 30000 })
     if (hits.HomeTimeline && hits.HomeTimeline._status !== 401) {
-      // 账号名：从 HomeTimeline 里的 viewer 字段拿
+      // 取账号名
       try {
         const v = hits.HomeTimeline?.data?.viewer?.user_results?.result?.legacy || hits.HomeTimeline?.data?.home?.home_timeline_urt?.user_results?.result?.legacy
         screenName = v?.screen_name || ''

@@ -32,7 +32,7 @@ export class XPanel extends plugin {
     ]
     for (const ip of getLocalIps()) lines.push(`🌐 内网: http://${ip}:${port}`)
     e.reply(lines.join('\n'))
-    // 公网异步补发（仿 YePanel 国内源优先）
+    // 公网异步补发
     getRemoteIp().then((ip) => {
       if (ip) e.reply(`🌐 公网: http://${ip}:${port}`)
     })

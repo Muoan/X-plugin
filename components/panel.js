@@ -130,7 +130,7 @@ export function cancelTask (id) {
 export function retryTask (id) {
   const t = tasks.get(String(id))
   if (!t || !['failed', 'canceled'].includes(t.status)) return false
-  // 重置失败/未完成的分项（保留已完成 file_id 的），否则重试会被当成单文件任务去下 t.url
+  // 重置失败分项
   for (const f of (t.files || [])) {
     if (!f.file_id) {
       f.error = ''
@@ -248,7 +248,7 @@ async function runTask (t) {
     const maxMB = getConfig().panel?.maxFileMB || 500
     const picks = (t.files || []).filter(f => !f.file_id && !f.error)
     if (picks.length) return runMultiTask(t, picks, maxMB)
-    // 有 files 但无待下载分项：不能回退去下载 t.url（面板任务 t.url 是推文页，会下成 .bin）
+    // 不回退单文件
     if ((t.files || []).length) {
       const doneFiles = (t.files || []).filter(f => f.file_id)
       if (doneFiles.length) {
@@ -597,7 +597,7 @@ export function start () {
       if (p === '/style.css') return sendFile(res, path.join(WEB_DIR, 'style.css'), 'text/css; charset=utf-8')
       if (p === '/app.js') return sendFile(res, path.join(WEB_DIR, 'app.js'), 'application/javascript; charset=utf-8')
 
-      // 渲染页直链（解析/拉取结果，TTL 1h）
+      // 渲染直链
       const vMatch = p.match(/^\/v\/(ma-[0-9a-f]+)$/)
       if (vMatch) {
         const rec = renders.get(vMatch[1])
@@ -608,11 +608,11 @@ export function start () {
         return sendHtml(res, rec.html)
       }
 
-      // 媒体代理（仅 twimg，流式）
+      // 媒体代理
       if (p === '/img') {
         const u = url.searchParams.get('u') || ''
         if (!/^https:\/\/(pbs|video|abs)\.twimg\.com\//i.test(u)) return sendText(res, 400, 'bad url')
-        // 媒体按需代理：访问才开，空闲自动关
+        // 按需代理
         try {
           if (!proxy.getStatus().running) await proxy.startProxy({ skipTest: true, owner: 'media' })
           proxy.touchMedia()
@@ -721,7 +721,7 @@ export function start () {
       // 其余需认证
       if (!checkAuth(req, token)) return json(res, 401, { error: '未授权，请先登录' })
 
-      // X 查询（浏览器通道：用户/时间线/搜索/通知）
+      // X 查询
       if (req.method === 'POST' && p === '/api/x/query') {
         const body = await readBody(req)
         const type = String(body.type || '')
@@ -750,7 +750,7 @@ export function start () {
             const list = await fetchSearch(value)
             const maxN = Math.min(Number(getConfig().x?.maxSearchResults || 10), 50)
             const items = list.slice(0, maxN)
-            // 每条独立页面（id 化）
+            // 独立页面
             const pageItems = items.map((t, i) => {
               const pid = renderPage(renderListHtml({ title: `${value} · 结果 ${i + 1}`, items: [t] }), t.url || `https://x.com/search?q=${encodeURIComponent(value)}`)
               return { idx: i + 1, link: renderLink(pid), user: t.screen_name, text: (t.text || '').slice(0, 60) }
