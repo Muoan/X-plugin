@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -1071,7 +1072,7 @@ export function start () {
   })
 
   server.listen(port, '0.0.0.0', () => {
-    console.log(`[X-plugin] 面板已启动: http://0.0.0.0:${port}（token: ${token}）`)
+    console.log(chalk.greenBright(`[X-plugin] 🚀 面板已启动: http://0.0.0.0:${port}（token: ${token}）`))
   })
   return server
 }
