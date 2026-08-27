@@ -141,7 +141,7 @@ function renderTasks () {
         <span>${fmtSize(t.downloaded_size)} / ${fmtSize(t.total_size || t.file_size)}</span>
         <span>${fmtSpeed(t.speed)}</span>
         <span>${fmtTime(t.created_at)}</span>
-        ${cleaned ? '<span class="cleaned-tag">🗑 已过期清理</span>' : ''}
+        ${cleaned ? '<span class="cleaned-tag">🗑 已清理</span>' : ''}
       </div>
       ${t.error ? `<div class="task-err">${esc(t.error)}</div>` : ''}
       ${fileRows}
