@@ -39,7 +39,7 @@ try {
 }
 
 const cost = Date.now() - start
-// 启动横幅（模仿 Ymoan 启动初始化样式，整块打印）
+// 启动横幅（感谢等风来）
 const line = chalk.gray('-'.repeat(30))
 const port = getConfig().panel?.port || 3007
 const bootLines = [
