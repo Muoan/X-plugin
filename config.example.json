@@ -1,6 +1,6 @@
 {
   "proxy": {
-    "subscribeUrl": "https://你的订阅地址/api/v1/client/subscribe?token=你的token",
+    "subscribeUrl": "https://订阅地址/api/v1/client/subscribe?token=你的token",
     "port": 10890,
     "enabled": false,
     "nodeIndex": 0,
