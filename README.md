@@ -46,6 +46,12 @@
 
 `pnpm install --filter=X-plugin`
 
+**浏览器依赖（评论区/时间线/搜索/通知需要）：**
+
+`npm i puppeteer`（在云崽根目录执行，会自动带 chromium）
+
+如用 `puppeteer-core`，需自行安装 chromium；也可在 `data/config.json` 填 `browser.executablePath` 指定浏览器路径（默认自动探测 /usr/bin/chromium 等）
+
 </details>
 
 ****

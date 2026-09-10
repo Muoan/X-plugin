@@ -15,6 +15,9 @@
     "tweetDetailQueryId": "",
     "maxSearchResults": 10
   },
+  "browser": {
+    "executablePath": ""
+  },
   "panel": {
     "port": 3007,
     "token": ""

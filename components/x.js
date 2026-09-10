@@ -75,7 +75,8 @@ export async function getComments (tweetId, cookie) {
     if (!json || !json.data) return null
     const list = extractComments(json, tweetId)
     return list || null
-  } catch {
+  } catch (err) {
+    console.error('[X-plugin] 评论抓取失败:', err?.message || err)
     return null
   }
 }

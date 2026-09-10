@@ -34,6 +34,10 @@ const DEFAULTS = {
     // 搜索最多条数
     maxSearchResults: 10
   },
+  browser: {
+    // 浏览器路径
+    executablePath: ''
+  },
   panel: {
     // 面板端口
     port: 3007,

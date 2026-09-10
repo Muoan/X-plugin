@@ -1,10 +1,48 @@
 // 浏览器拦截GraphQL响应
 // 认证头绕cf
 import { createRequire } from 'node:module'
+import { existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { getConfig } from './config.js'
 
-const require2 = createRequire('/QQBOT/Yunzai/')
-const puppeteer = require2('puppeteer')
+const require2 = createRequire(import.meta.url)
+let puppeteerCache = null
+
+/** 惰性加载依赖 */
+function loadPuppeteer () {
+  if (puppeteerCache) return puppeteerCache
+  for (const name of ['puppeteer', 'puppeteer-core']) {
+    try {
+      puppeteerCache = require2(name)
+      return puppeteerCache
+    } catch { /* 试下一个 */ }
+  }
+  throw new Error('缺少依赖 puppeteer，请在云崽根目录执行 npm i puppeteer 后重启')
+}
+
+/** 探测浏览器路径 */
+function findChrome (custom) {
+  const list = [
+    custom,
+    process.env.CHROME_PATH,
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/snap/bin/chromium'
+  ].filter(Boolean)
+  for (const p of list) {
+    if (existsSync(p)) return p
+  }
+  for (const bin of ['chromium', 'chromium-browser', 'google-chrome', 'chrome']) {
+    try {
+      const p = execFileSync('which', [bin], { encoding: 'utf8' }).trim()
+      if (p && existsSync(p)) return p
+    } catch { /* 未安装 */ }
+  }
+  return ''
+}
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
@@ -35,10 +73,12 @@ export async function graphQLByBrowser (path, ops, { timeout = 55000, gotoTimeou
   const proxyServer = external
     ? String(external).replace(/^socks5h:\/\//i, 'socks5://')
     : `socks5://127.0.0.1:${cfg.proxy?.port || 10890}`
+  const puppeteer = loadPuppeteer()
+  const executablePath = findChrome(cfg.browser?.executablePath)
   let browser
   try {
     browser = await puppeteer.launch({
-      executablePath: '/usr/bin/chromium',
+      ...(executablePath ? { executablePath } : {}),
       args: [
         '--no-sandbox', '--disable-setuid-sandbox', '--headless=new',
         `--proxy-server=${proxyServer}`,
@@ -85,6 +125,18 @@ export async function graphQLByBrowser (path, ops, { timeout = 55000, gotoTimeou
     if (browser) { try { await browser.close() } catch { /* ignore */ } }
     release()
   }
+}
+
+/** 浏览器环境自检 */
+export function browserReady () {
+  try {
+    loadPuppeteer()
+  } catch (err) {
+    return { ok: false, msg: err.message }
+  }
+  const p = findChrome(getConfig().browser?.executablePath)
+  if (!p) return { ok: false, msg: '未找到 chromium/chrome，请安装浏览器或在配置里填 browser.executablePath' }
+  return { ok: true, msg: `✅ 浏览器可用（${p}）` }
 }
 
 /** 检查 Cookie 有效性（浏览器登录态） */

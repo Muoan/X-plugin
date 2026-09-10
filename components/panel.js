@@ -9,6 +9,7 @@ import { extractXUrl, getTweet, buildXMessage, formatMedia, pickDownloadUrls, fe
 import * as proxy from './proxy.js'
 import * as downloader from './downloader.js'
 import { fetchText } from './fetch.js'
+import { browserReady } from './browser.js'
 
 const WEB_DIR = path.join(PLUGIN_DIR, 'web')
 const HISTORY_PATH = path.join(DATA_DIR, 'history.json')
@@ -950,6 +951,7 @@ export function start () {
           nodeCount: s.nodeCount,
           nodeName: s.node ? `${s.node.name}（${s.node.add}:${s.node.port}）` : '',
           subscribeConfigured: !!getConfig().proxy.subscribeUrl,
+          browser: browserReady(),
           token
         })
       }
