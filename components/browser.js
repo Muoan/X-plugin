@@ -7,6 +7,7 @@ import { getConfig } from './config.js'
 
 const require2 = createRequire(import.meta.url)
 let puppeteerCache = null
+let puppeteerName = ''
 
 /** 惰性加载依赖 */
 function loadPuppeteer () {
@@ -14,10 +15,11 @@ function loadPuppeteer () {
   for (const name of ['puppeteer', 'puppeteer-core']) {
     try {
       puppeteerCache = require2(name)
+      puppeteerName = name
       return puppeteerCache
     } catch { /* 试下一个 */ }
   }
-  throw new Error('缺少依赖 puppeteer，请在云崽根目录执行 npm i puppeteer 后重启')
+  throw new Error('缺少依赖 puppeteer，请在云崽根目录执行 pnpm add puppeteer（或 npm i puppeteer）后重启')
 }
 
 /** 探测浏览器路径 */
@@ -42,6 +44,16 @@ function findChrome (custom) {
     } catch { /* 未安装 */ }
   }
   return ''
+}
+
+/** 启动前自检 */
+function assertBrowser () {
+  const puppeteer = loadPuppeteer()
+  const p = findChrome(getConfig().browser?.executablePath)
+  if (!p && puppeteerName === 'puppeteer-core') {
+    throw new Error('puppeteer-core 需要系统浏览器，请安装 chromium 或在配置里填 browser.executablePath')
+  }
+  return { puppeteer, executablePath: p }
 }
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -73,8 +85,7 @@ export async function graphQLByBrowser (path, ops, { timeout = 55000, gotoTimeou
   const proxyServer = external
     ? String(external).replace(/^socks5h:\/\//i, 'socks5://')
     : `socks5://127.0.0.1:${cfg.proxy?.port || 10890}`
-  const puppeteer = loadPuppeteer()
-  const executablePath = findChrome(cfg.browser?.executablePath)
+  const { puppeteer, executablePath } = assertBrowser()
   let browser
   try {
     browser = await puppeteer.launch({
@@ -130,13 +141,11 @@ export async function graphQLByBrowser (path, ops, { timeout = 55000, gotoTimeou
 /** 浏览器环境自检 */
 export function browserReady () {
   try {
-    loadPuppeteer()
+    const { executablePath } = assertBrowser()
+    return { ok: true, msg: `✅ 浏览器可用（${executablePath || 'puppeteer 自带 Chrome'}）`, module: puppeteerName }
   } catch (err) {
-    return { ok: false, msg: err.message }
+    return { ok: false, msg: err.message, module: puppeteerName }
   }
-  const p = findChrome(getConfig().browser?.executablePath)
-  if (!p) return { ok: false, msg: '未找到 chromium/chrome，请安装浏览器或在配置里填 browser.executablePath' }
-  return { ok: true, msg: `✅ 浏览器可用（${p}）` }
 }
 
 /** 检查 Cookie 有效性（浏览器登录态） */

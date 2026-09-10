@@ -48,9 +48,11 @@
 
 **浏览器依赖（评论区/时间线/搜索/通知需要）：**
 
-`npm i puppeteer`（在云崽根目录执行，会自动带 chromium）
+在云崽根目录执行 `pnpm add puppeteer`（脚本安装的云崽用 pnpm；npm 安装的用 `npm i puppeteer`）
 
-如用 `puppeteer-core`，需自行安装 chromium；也可在 `data/config.json` 填 `browser.executablePath` 指定浏览器路径（默认自动探测 /usr/bin/chromium 等）
+- puppeteer 会自动下载 Chrome，国内网络下载失败时用镜像：`PUPPETEER_DOWNLOAD_BASE_URL=https://cdn.npmmirror.com/binaries/chrome-for-testing pnpm add puppeteer`
+- 不想下载 Chrome：`apt install chromium` 后改用 `pnpm add puppeteer-core`，插件会自动探测 `/usr/bin/chromium`
+- 路径探测不到时在 `data/config.json` 填 `browser.executablePath`（默认自动探测 /usr/bin/chromium 等），面板状态接口 `/api/status` 的 `browser` 字段可看是否就绪
 
 </details>
 
