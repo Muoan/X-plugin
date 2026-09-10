@@ -54,6 +54,27 @@
 - 不想下载 Chrome：`apt install chromium` 后改用 `pnpm add puppeteer-core`，插件会自动探测 `/usr/bin/chromium`
 - 路径探测不到时在 `data/config.json` 填 `browser.executablePath`（默认自动探测 /usr/bin/chromium 等），面板状态接口 `/api/status` 的 `browser` 字段可看是否就绪
 
+**Docker 部署（TRSS-Yunzai 镜像）：**
+
+```bash
+# 1. 进容器（容器名用 docker ps 查）
+docker exec -it <容器名> bash
+
+# 2. 装浏览器 + 依赖（Debian/Ubuntu 系）
+apt update && apt install -y chromium
+cd /root/TRSS-AllBot/TRSS-Yunzai
+pnpm add puppeteer-core
+
+# 3. 出容器重启
+exit
+docker restart <容器名>
+```
+
+- Alpine 镜像用 `apk add chromium nss freetype harfbuzz ttf-freefont`
+- 容器里不用装整套 `puppeteer`（自带 Chrome 在容器里还缺一堆 so 库），装 `puppeteer-core` + 系统 chromium 最省事，插件会自动探测
+- 容器重建后装的依赖会丢：写进自己的 Dockerfile（`RUN apt-get update && apt-get install -y chromium && cd /root/TRSS-AllBot/TRSS-Yunzai && pnpm add puppeteer-core`）或把命令加到 compose 的启动脚本里
+- 也可用环境变量指定浏览器：`PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium`
+
 </details>
 
 ****
